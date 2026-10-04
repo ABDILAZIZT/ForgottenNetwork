@@ -6,7 +6,7 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "packageManager": "pnpm@11.19.0",
+  "packageManager": "pnpm@9.15.4",
   "scripts": {
     "install:all": "pnpm install",
     "start": "concurrently \"pnpm run start:server\" \"pnpm run start:client\"",
