@@ -12,7 +12,11 @@ test('authentication return paths cannot escape the application origin', () => {
 
 test('production authentication fails closed when identity settings are incomplete', () => {
   assert.throws(
-    () => validateAuthConfiguration({ APP_ORIGIN: 'https://world.example' }, true),
+    () =>
+      validateAuthConfiguration(
+        { APP_ORIGIN: 'https://world.example', OIDC_CLIENT_ID: 'client' },
+        true,
+      ),
     /OIDC_ISSUER_URL/,
   );
   assert.throws(

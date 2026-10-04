@@ -18,10 +18,12 @@ function promiseSessionAction(action) {
 function validateAuthConfiguration(environment, production) {
   if (!production) return;
   if (environment.DISABLE_AUTH_VALIDATION === 'true' || environment.ALLOW_ANONYMOUS_AUTH === 'true') return;
+  const oidcFields = ['OIDC_ISSUER_URL', 'OIDC_CLIENT_ID', 'OIDC_CLIENT_SECRET'];
+  const hasAnyOidc = oidcFields.some((name) => Boolean(environment[name]));
+  if (!hasAnyOidc) return;
   const required = ['APP_ORIGIN', 'OIDC_ISSUER_URL', 'OIDC_CLIENT_ID', 'OIDC_CLIENT_SECRET'];
   const missing = required.filter((name) => !environment[name]);
   if (missing.length) {
-    if (missing.length === required.length) return;
     throw new Error(`Production authentication is missing: ${missing.join(', ')}`);
   }
   const appOrigin = new URL(environment.APP_ORIGIN);
