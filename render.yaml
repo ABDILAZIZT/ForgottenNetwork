@@ -4,9 +4,9 @@ services:
     runtime: node
     plan: free
     region: frankfurt
-    buildCommand: npm install -g pnpm && pnpm install --no-frozen-lockfile && pnpm run build
+    buildCommand: pnpm install --no-frozen-lockfile && pnpm run build
     startCommand: node server/index.js
-    healthCheckPath: /api/v1/health/ready
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
         value: '22'

@@ -4,7 +4,7 @@
   "description": "A living pixel-art web experience",
   "private": true,
   "engines": {
-    "node": ">=22.13"
+    "node": ">=20.0.0"
   },
   "packageManager": "pnpm@11.19.0",
   "scripts": {

@@ -4,7 +4,7 @@
   "description": "Backend for Cyber Terrarium",
   "main": "index.js",
   "engines": {
-    "node": ">=22.13"
+    "node": ">=20.0.0"
   },
   "scripts": {
     "start": "node index.js",
