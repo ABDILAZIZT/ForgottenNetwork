@@ -30,6 +30,10 @@ services:
         value: 'true'
       - key: SESSION_SECRET
         generateValue: true
+      - key: APP_ORIGIN
+        value: https://forgotten-network.onrender.com
+      - key: DISABLE_AUTH_VALIDATION
+        value: 'true'
       - key: REQUEST_LOGS
         value: 'true'
 databases:
