@@ -321,7 +321,16 @@ app.use((error, _req, res, _next) => {
 
 async function startServer() {
   if (databasePool && process.env.MIGRATE_ON_START === 'true') {
-    await runMigrations(databasePool);
+    for (let attempt = 1; attempt <= 10; attempt++) {
+      try {
+        await runMigrations(databasePool);
+        break;
+      } catch (err) {
+        console.warn(`Migration attempt ${attempt}/10 failed (${err.message}). Retrying in 3s...`);
+        if (attempt === 10) throw err;
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+    }
   }
   const server = app.listen(PORT, () => {
     console.log(`Cyber Terrarium Backend running on http://localhost:${PORT}`);
