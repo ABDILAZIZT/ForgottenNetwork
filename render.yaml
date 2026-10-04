@@ -5,8 +5,7 @@ services:
     plan: free
     region: frankfurt
     buildCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm run build
-    preDeployCommand: node server/migrate.js
-    startCommand: node server/index.js
+    startCommand: node server/migrate.js && node server/index.js
     healthCheckPath: /api/v1/health/ready
     envVars:
       - key: NODE_VERSION
