@@ -20,10 +20,15 @@ const { createPermanentCanvas } = require('./permanent/api');
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 const DB_PATH = path.resolve(__dirname, process.env.DB_PATH || 'db.json');
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://127.0.0.1:5173')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const allowedOrigins = [
+  ...new Set(
+    (process.env.CORS_ORIGIN || 'http://localhost:5173,http://127.0.0.1:5173')
+      .split(',')
+      .concat(process.env.APP_ORIGIN ? [process.env.APP_ORIGIN] : [])
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+  ),
+];
 const databasePool = createDatabasePool();
 
 app.disable('x-powered-by');

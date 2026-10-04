@@ -32,6 +32,8 @@ services:
         generateValue: true
       - key: APP_ORIGIN
         value: https://forgotten-network.onrender.com
+      - key: CORS_ORIGIN
+        value: https://forgotten-network.onrender.com,http://localhost:5173
       - key: DISABLE_AUTH_VALIDATION
         value: 'true'
       - key: REQUEST_LOGS
