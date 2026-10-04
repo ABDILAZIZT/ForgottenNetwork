@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://forgottennetwork.com/sitemap.xml

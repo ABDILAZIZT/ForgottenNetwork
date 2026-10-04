@@ -1,0 +1,542 @@
+[
+  {
+    "sha256": "BFFC11037FD31840D36F692B8EFF557445F6E75A9E1E71D02F295351A68859EA",
+    "path": "ForgottenNetwork/.github/workflows/quality.yml"
+  },
+  {
+    "sha256": "7DDA426569745C15CC47E97199A730DAB226B584BFF9732FD40B19276E3AC9D4",
+    "path": "ForgottenNetwork/client/dist/assets/index-DP50D5zv.css"
+  },
+  {
+    "sha256": "F102D0C200C4585259524E7AECF801CA0C9F5222B8F9B94D1988EE2AD08DE61C",
+    "path": "ForgottenNetwork/client/dist/assets/index-K_V8m-0S.js"
+  },
+  {
+    "sha256": "2B1D3C8B3D96E3B5F9384DDC124659866BB590A3481A10BD30F45DCD5B9B2590",
+    "path": "ForgottenNetwork/client/dist/index.html"
+  },
+  {
+    "sha256": "99DC5DB63E94AF1ADABF0AF27C0EDE3FF162486EFAF2AD708F46AEB43191DF55",
+    "path": "ForgottenNetwork/client/src/components/AdBannerModal.tsx"
+  },
+  {
+    "sha256": "1FC5BE7CBEE1AD960DA619E5D5DCAE9B467BC3BFDB769F93B4C18DA358F9DEC6",
+    "path": "ForgottenNetwork/client/src/components/CommunityPanel.tsx"
+  },
+  {
+    "sha256": "4DD5A0925281873775A1008758A0B7F17ECC92E9F3C07AD8B91773DEAD1E9D08",
+    "path": "ForgottenNetwork/client/src/components/DailyRewardModal.tsx"
+  },
+  {
+    "sha256": "88434EF7B93894DF039798331F0E3BE8D1DEA34A70F4FB1EF4EBF5567F46DC02",
+    "path": "ForgottenNetwork/client/src/components/EntityCreatorModal.tsx"
+  },
+  {
+    "sha256": "E5AAB7B86E71CE97AE5C4AC489BFFE807709E2B01F6E18F983CA5535FBFFE4F8",
+    "path": "ForgottenNetwork/client/src/components/ErrorBoundary.tsx"
+  },
+  {
+    "sha256": "1D3CD4836B812DF001A7D14D4327309D5330960D0FCF97936D23E0BBB2088DAE",
+    "path": "ForgottenNetwork/client/src/components/Minimap.tsx"
+  },
+  {
+    "sha256": "0FCE26D60173832C0C87A9D0C41A3E51D2FFA2DD55FA7973584E89E6656C14AA",
+    "path": "ForgottenNetwork/client/src/components/OnboardingFlow.tsx"
+  },
+  {
+    "sha256": "CB58E2670FA3E1B8603A086977B6A07B95372B6AB079780F0CDB2AA6A1848B29",
+    "path": "ForgottenNetwork/client/src/components/PixelEditor.tsx"
+  },
+  {
+    "sha256": "10D4B93629B4C932FF9168CEB623B03DE1EBC6B02777B5605A18169A35C2D007",
+    "path": "ForgottenNetwork/client/src/components/ShopModal.tsx"
+  },
+  {
+    "sha256": "499D982CCCDB32E3EE9B9777CACDCD7608CCECC367FC18CCA68A92AB1EDD13D3",
+    "path": "ForgottenNetwork/client/src/components/SubscriptionBadge.tsx"
+  },
+  {
+    "sha256": "48F7399731D296EDAAC5D3F86A37165EBB907B0A277E34D970A9CB632B2EA63A",
+    "path": "ForgottenNetwork/client/src/components/useModal.ts"
+  },
+  {
+    "sha256": "3D3405D83B7D48674E9D6E0E802A7F70605274DADB3438DE27A93F8BA4F5E0F2",
+    "path": "ForgottenNetwork/client/src/components/WorldExtras.tsx"
+  },
+  {
+    "sha256": "E25AC8A23353B2377593AB9AF7812CA588ACA36A85E3CA39BD0E73BCBD76F62C",
+    "path": "ForgottenNetwork/client/src/components/WorldOverlay.tsx"
+  },
+  {
+    "sha256": "C8BE4526540077C2B02722362D78DEE570780CD3840AC99E51F9CD8495471F1C",
+    "path": "ForgottenNetwork/client/src/engine/Atmosphere.ts"
+  },
+  {
+    "sha256": "FA13E9615609F2F94BB3AD20B47EF6EE4E9F9EBFCF4E816E2D05B7FAD6BE6D6C",
+    "path": "ForgottenNetwork/client/src/engine/Camera.test.ts"
+  },
+  {
+    "sha256": "9E1A6031821DAAF76B9CBFAD46FC4466C8A058BF09BD7BDDFC0AB3AFBE8BAF3A",
+    "path": "ForgottenNetwork/client/src/engine/Camera.ts"
+  },
+  {
+    "sha256": "A031B411421D9F2A069A8A122278B538703BF14BED08B3143219D60ACC7F557A",
+    "path": "ForgottenNetwork/client/src/engine/Chunk.ts"
+  },
+  {
+    "sha256": "67DFF1C1F91F807C0BC37172DC49AF8163CA4264F815AD8CA075AC52E90972B1",
+    "path": "ForgottenNetwork/client/src/engine/db.ts"
+  },
+  {
+    "sha256": "C35322D4A33A0117F3CFEDB50AEC3B4924197A7DD22E5F760B73C86DEE69FC7E",
+    "path": "ForgottenNetwork/client/src/engine/Engine.paint.test.ts"
+  },
+  {
+    "sha256": "EAEA876FC8778625CE3918ADA6FB917006A27B17958CBE015A681879755E509F",
+    "path": "ForgottenNetwork/client/src/engine/Engine.render.test.ts"
+  },
+  {
+    "sha256": "472AEAE126FA34D6CE9332FA8C4BA642147D6A2A90CC3A9E8411F454F8D3D80F",
+    "path": "ForgottenNetwork/client/src/engine/Engine.ts"
+  },
+  {
+    "sha256": "DFC7D9B1EE53025813B35155B70DEA6A6D0C63452EE65EE7B4CD9D989E24B5A8",
+    "path": "ForgottenNetwork/client/src/engine/Entity.ts"
+  },
+  {
+    "sha256": "44E22D9CF108EFDE2E6EA632A10E4C943D67D570F76350248A6CC4931DA89D62",
+    "path": "ForgottenNetwork/client/src/engine/EntityManager.ts"
+  },
+  {
+    "sha256": "622BB455CDE68BFE2F6530A57F0B0D90BD0EF96A0D2C0942D1EBD4A345B1D07D",
+    "path": "ForgottenNetwork/client/src/engine/GifDecoder.ts"
+  },
+  {
+    "sha256": "38A285E18587A3CF5E2E4F051E2AC247834EB0517106315D0CEEB3EA5684DF49",
+    "path": "ForgottenNetwork/client/src/permanent/api.ts"
+  },
+  {
+    "sha256": "2868D8B3EC7CB217DA557DBD54488F02A50D2F79D1A94A05E9E0B961CF98EBCF",
+    "path": "ForgottenNetwork/client/src/permanent/art.ts"
+  },
+  {
+    "sha256": "B32655B63F426FD0DDFB225C1078ABB91E7F04049B64AD8645FF2277F8AADF38",
+    "path": "ForgottenNetwork/client/src/permanent/CanvasEngine.ts"
+  },
+  {
+    "sha256": "26B1EE4C85754D69A1D92F3162498E97F55F89CD6F3EEC245ECDE99570D7D3E2",
+    "path": "ForgottenNetwork/client/src/permanent/geometry.test.ts"
+  },
+  {
+    "sha256": "9C2D5E81C08E8CB853494DD25B3BCA279F133F3E6DF28513333ED44E6C80A607",
+    "path": "ForgottenNetwork/client/src/permanent/geometry.ts"
+  },
+  {
+    "sha256": "EB71F4CDAA97DDC52FD6C6B8DA63BB023F6C6B517A6A201C319D586F02C7F938",
+    "path": "ForgottenNetwork/client/src/permanent/PermanentWorld.tsx"
+  },
+  {
+    "sha256": "7BA508C56C9F395A584B6A219AD7379A13C79324A8183F16B86F9425D1427AE9",
+    "path": "ForgottenNetwork/client/src/permanent/types.ts"
+  },
+  {
+    "sha256": "5F626D86FC1899A6E6A0526EB2ABB9C0D98AB37EB2203D8F970BC320DCE5A103",
+    "path": "ForgottenNetwork/client/src/permanent/world.css"
+  },
+  {
+    "sha256": "0CBE8CFA517900C58B7D495B057D204167DF42C9DF157A424CA142A9B5E45D3B",
+    "path": "ForgottenNetwork/client/src/repositories/HttpWorldGateway.test.ts"
+  },
+  {
+    "sha256": "CA6441BA2A4CBEA95532FC8C82389CE8F855FB371A7C990650C73646E34AD197",
+    "path": "ForgottenNetwork/client/src/repositories/HttpWorldGateway.ts"
+  },
+  {
+    "sha256": "9D2249F6C26D12A69B0D0BAE062A72DFF23EE2D0C5ED3D9BEF45207EC96C5215",
+    "path": "ForgottenNetwork/client/src/repositories/index.ts"
+  },
+  {
+    "sha256": "A5DE50BF24F611E92A1B4933E49AF3577C110B0DE0B8F68A2E33DFF098ED6D16",
+    "path": "ForgottenNetwork/client/src/repositories/LocalWorldRepository.test.ts"
+  },
+  {
+    "sha256": "885E660A23A37F8D413FBF85DC05C27EB399DC70EF375DA4B2C54083777DF17A",
+    "path": "ForgottenNetwork/client/src/repositories/LocalWorldRepository.ts"
+  },
+  {
+    "sha256": "A2FCE9535E181109219759D685DC5C5F5CE8B16214834B631CF0324687AE45EC",
+    "path": "ForgottenNetwork/client/src/repositories/prepareRemoteImport.ts"
+  },
+  {
+    "sha256": "F1685ED9A444488147BE66C831C9BC83DD8A4E8E19BF6947F4E1FF3523DA1E4D",
+    "path": "ForgottenNetwork/client/src/repositories/RemoteMutationQueue.ts"
+  },
+  {
+    "sha256": "21B811ED7FDEA555E52B9343B8FB0D272F8E7FC7B8950397C6F00AFDFDAB426F",
+    "path": "ForgottenNetwork/client/src/repositories/RemoteWorldRepository.test.ts"
+  },
+  {
+    "sha256": "EE7274CE21ABAF9D98CE46C8E86114B885490F550ED3A1C43A2826C6D877C5A0",
+    "path": "ForgottenNetwork/client/src/repositories/RemoteWorldRepository.ts"
+  },
+  {
+    "sha256": "61BAD0BC5F34B619E5B6CCF0238BF751DDE82E13EDAFC282B531BB212226EB21",
+    "path": "ForgottenNetwork/client/src/repositories/types.ts"
+  },
+  {
+    "sha256": "C0CF1B432B11BB3A3338379432C97BAD1D4A39EF737D401EA929C38F7EFD505A",
+    "path": "ForgottenNetwork/client/src/repositories/WorldRepositoryContext.tsx"
+  },
+  {
+    "sha256": "A589C3B18A5244CBCC864900D821E98CCA42159E1CF34A26BED73D0C0A7E13D2",
+    "path": "ForgottenNetwork/client/src/App.tsx"
+  },
+  {
+    "sha256": "71D25057B80B1D7E00131D8B81BC6DE262599B54ED652298261F8DE9F661C12C",
+    "path": "ForgottenNetwork/client/src/auth.ts"
+  },
+  {
+    "sha256": "FEBDE0C579C99D96701E7BE524BE79EE4DF64AC98A14A192FDD83B0B3ABE663B",
+    "path": "ForgottenNetwork/client/src/economy.test.ts"
+  },
+  {
+    "sha256": "D3020C309640C51A818806D9334150ABE6E110332AC1100ED1C65F864B381ED8",
+    "path": "ForgottenNetwork/client/src/economy.ts"
+  },
+  {
+    "sha256": "805DC8D33AFE62CE8D51DA01697C472B26BEFAC8098C75DB58DE070637A8ECCD",
+    "path": "ForgottenNetwork/client/src/index.css"
+  },
+  {
+    "sha256": "669EF999F82419C680ECF0FFA7382E8706256E3089EB89110608A00361C9A4F7",
+    "path": "ForgottenNetwork/client/src/location.test.ts"
+  },
+  {
+    "sha256": "27EE4ED3FDDDDC508D284FB16D98F09043586107A371D09E7AA38FF097FBFCF4",
+    "path": "ForgottenNetwork/client/src/location.ts"
+  },
+  {
+    "sha256": "1D13F89A6C99B510AECBC6DFD248006B469F39407B33E1BFDB0D25AE384A8900",
+    "path": "ForgottenNetwork/client/src/main.tsx"
+  },
+  {
+    "sha256": "01BA816FC4650A4731F37BB5ADC34A1F18715E7460EEE1B09E96F752CFCD071B",
+    "path": "ForgottenNetwork/client/src/palettes.ts"
+  },
+  {
+    "sha256": "71DA15018933598963A4949984D9E1F2CEE7D79D97271E527B358B15509C3879",
+    "path": "ForgottenNetwork/client/src/vite-env.d.ts"
+  },
+  {
+    "sha256": "C35E1F1D54AC1C182FF973383A1FF981B1B8562E42CA0FBBD031E7B88124DA6B",
+    "path": "ForgottenNetwork/client/.eslintrc.cjs"
+  },
+  {
+    "sha256": "359BBB253A415E6FA6D765029EFECD8DA041BEB5F42CD8DB48F014817D3A6912",
+    "path": "ForgottenNetwork/client/index.html"
+  },
+  {
+    "sha256": "D01D77A967FBBFBD9C9EEF774741C783C6623FBFC0B2215B3DE292E0561F586D",
+    "path": "ForgottenNetwork/client/package-lock.json"
+  },
+  {
+    "sha256": "DA54C3C00A937FD7356E6F342909A3CB93579FCEB8EE766C026C9D11ED388200",
+    "path": "ForgottenNetwork/client/package.json"
+  },
+  {
+    "sha256": "980D6CBE977DDFB52D3AB1BDD3FBA30F8C1DB9371B3B14AA4557D32BB00CE54B",
+    "path": "ForgottenNetwork/client/tsconfig.json"
+  },
+  {
+    "sha256": "9E2ABB169EA87B7190613A1D4DA57CA608463A453BD4231FA3AEEE5E308370DD",
+    "path": "ForgottenNetwork/client/tsconfig.node.json"
+  },
+  {
+    "sha256": "C3D1B65312B5C2DC2D1429CA946E10FF75BA0594713D8DB4547F312DB1B5CC06",
+    "path": "ForgottenNetwork/client/vite.config.ts"
+  },
+  {
+    "sha256": "8546E8ED779FEAB9BC32F06712EB9D92A7521DC066EF9D7EDE6DB5E9F69B3A6F",
+    "path": "ForgottenNetwork/docs/API_CONTRACT.md"
+  },
+  {
+    "sha256": "62F3A1C1FFCDDCEAD8BEB2278CB4FB84159E2D81F7612745877A1B36B762C5CE",
+    "path": "ForgottenNetwork/docs/CONTENT_AND_RETENTION_POLICY.md"
+  },
+  {
+    "sha256": "770C1EF08AA3877359EC0CC61EF6E6D54F2BF3C6CB1F5E15E431373828EC05BC",
+    "path": "ForgottenNetwork/docs/DATA_MODEL.md"
+  },
+  {
+    "sha256": "125AD5EDAE17C940D6B055F532EB64D22C2605CF939340F9C7333AF6EE0BB962",
+    "path": "ForgottenNetwork/docs/LAUNCH_READINESS.md"
+  },
+  {
+    "sha256": "6E94BDEBE5F9788F4003740067CACC0CB210931DC550F8BF1768E5B0EB322158",
+    "path": "ForgottenNetwork/docs/MIGRATION_STRATEGY.md"
+  },
+  {
+    "sha256": "9A89F3C12E810F735FD7A1448ADF401B90B3CB7C37CB9F5A4C37FE78FAFD699B",
+    "path": "ForgottenNetwork/docs/MVP_SCOPE.md"
+  },
+  {
+    "sha256": "C901A4B3B38669437F6E6BE8ACE12450FF1F1D039978EBC60D317B1D36FE0AD6",
+    "path": "ForgottenNetwork/docs/PERMANENT_CANVAS.md"
+  },
+  {
+    "sha256": "93BAAD45357679005E220D3C8DC7F4AA803C0E816986415315AC49BB3AA84DAF",
+    "path": "ForgottenNetwork/docs/PERMANENT_QA.md"
+  },
+  {
+    "sha256": "736E0B8FA841203D79BBD48FCD425B78A5A0C57B50E1FA5017A26551EC4D1AC7",
+    "path": "ForgottenNetwork/docs/PERMISSIONS.md"
+  },
+  {
+    "sha256": "51513DF13B7454139DDB14E434CA830E3A6F9320778FF64821B59C7632326353",
+    "path": "ForgottenNetwork/docs/PERSISTENCE.md"
+  },
+  {
+    "sha256": "1D289A887265B08E2BEE286F5BF9C5967BA63993DFB366B812AB40F3D05EADB5",
+    "path": "ForgottenNetwork/docs/PHASE_0_BASELINE.md"
+  },
+  {
+    "sha256": "825D3269F6205A8D04CF39B688D024422DE12B654BE06BB101E818CCFD3BB253",
+    "path": "ForgottenNetwork/docs/PHASE_4_IMPLEMENTATION.md"
+  },
+  {
+    "sha256": "F194C5534A36E26D1CF0964F355D1443F76C80CF58EDF89B4155E59B634E7FDD",
+    "path": "ForgottenNetwork/docs/PHASE_5_IMPLEMENTATION.md"
+  },
+  {
+    "sha256": "7D1F8E17BD47D4D1F2320022FFACA79BDFCB5B340458E96D6F345726D0058E3B",
+    "path": "ForgottenNetwork/docs/PHASE_6_IMPLEMENTATION.md"
+  },
+  {
+    "sha256": "723B8A8F8AB442680913641D8B9D945A0CB8494820B5C3F783A852696CA6B99D",
+    "path": "ForgottenNetwork/docs/PRODUCT_SPEC.md"
+  },
+  {
+    "sha256": "3D2C300B46A59977E6AB0E27A3D19660E31094606EB88DBEA9AD9366E51FFED6",
+    "path": "ForgottenNetwork/docs/REPOSITORY_ARCHITECTURE.md"
+  },
+  {
+    "sha256": "64ECE99327645028AFBC1E6DD89110B2951EECDB8BAD9A1A8C98B6BE4BF1C16E",
+    "path": "ForgottenNetwork/server/migrations/001_shared_world.sql"
+  },
+  {
+    "sha256": "008BD1E37920DF256D79D3B464812BEBA9F6F077DBDAF61189E0E182188B6274",
+    "path": "ForgottenNetwork/server/migrations/002_runtime_support.sql"
+  },
+  {
+    "sha256": "CF34B7263F6A5A6F0BE40AEECEB868442758E02C358771267CA07F0D7360D481",
+    "path": "ForgottenNetwork/server/migrations/003_launch_controls.sql"
+  },
+  {
+    "sha256": "0107500417BC504AE61116D45A6B81A18CB330F1D7B3210912BA7668309F8611",
+    "path": "ForgottenNetwork/server/migrations/README.md"
+  },
+  {
+    "sha256": "56129F560BD1DF6704C675E57ED4522BFCD7207149C03F5AD0E94664E4B558CB",
+    "path": "ForgottenNetwork/server/permanent/api.js"
+  },
+  {
+    "sha256": "FA73D3F63672BBFC4D5322F72F9FAB088A17E2515A24224647A8302E11B919B3",
+    "path": "ForgottenNetwork/server/permanent/backup.js"
+  },
+  {
+    "sha256": "0C58070A41F88A4F7CC9FB40EE788D5CAF2D988E2D23A3EA1B608265FF06CF15",
+    "path": "ForgottenNetwork/server/permanent/store.js"
+  },
+  {
+    "sha256": "92D1DD5605E1A4C271399B760C4D7473FF3E7BC4468F59C8A388A93C936D037E",
+    "path": "ForgottenNetwork/server/scripts/check-syntax.js"
+  },
+  {
+    "sha256": "73AC36E2CCA913C7BA6AF2FBC1C767C944D272072C91B018E0346AF43C2E25E0",
+    "path": "ForgottenNetwork/server/scripts/staging-smoke.js"
+  },
+  {
+    "sha256": "EC937B390C83182572123C1C9B6313385DF11FC8B96B375B8431AA3BF22D9695",
+    "path": "ForgottenNetwork/server/test/api.test.js"
+  },
+  {
+    "sha256": "41B55CC05DAE1CECDB26106F5B7AB0C30FA9E669E284352165AC5DF3DB2A07BE",
+    "path": "ForgottenNetwork/server/test/frontend.test.js"
+  },
+  {
+    "sha256": "0F59261DC26A8BEED2755CBF75EC6BA4174F69EDE5A6DD996EF657B7AD0E124A",
+    "path": "ForgottenNetwork/server/test/permanent.test.js"
+  },
+  {
+    "sha256": "2314210D66A35EADFB66BDA376C5E26E52799EF4A9065EE8D183298493265057",
+    "path": "ForgottenNetwork/server/test/pgHarness.js"
+  },
+  {
+    "sha256": "34BB00E131F388ECDED7F2E0E03B522A25CB3E6DBE682EAEEE595A2A7A27AD39",
+    "path": "ForgottenNetwork/server/test/postgres.integration.test.js"
+  },
+  {
+    "sha256": "55DFABA8AF879FB1CCF32A0B86DFE7DBF1902A0C94EC87E0EEE9693904A180A4",
+    "path": "ForgottenNetwork/server/test/production-foundation.test.js"
+  },
+  {
+    "sha256": "2E313BE2CCDB159CAF471ABD9442256F1C056DCF5DDF1A88C1240BC25694F7D7",
+    "path": "ForgottenNetwork/server/test/security.test.js"
+  },
+  {
+    "sha256": "42409D55DEA0827B25A1D1A8E2419B9B56C2F000957FB91A442A5FC15A57C706",
+    "path": "ForgottenNetwork/server/apiProblem.js"
+  },
+  {
+    "sha256": "C8DF5D276858F6498C5E782B0BF5C3DA4FA3747D16D0DA562E130BDC47FCF133",
+    "path": "ForgottenNetwork/server/auth.js"
+  },
+  {
+    "sha256": "E22FA4C7781E156CB60D0C8BFB2874FBB4ECF29CE4EE8B3D3D111D5BD0D1C9CA",
+    "path": "ForgottenNetwork/server/database.js"
+  },
+  {
+    "sha256": "C5F3FA588D8F0F1D8BEEC6E8DF732EC29A8CED05E91F8D0B36F008443D49D1BF",
+    "path": "ForgottenNetwork/server/db.json"
+  },
+  {
+    "sha256": "35A43EFF1EB366480B7E2372DACBF0972EE7B731E60E726DE049A90071081364",
+    "path": "ForgottenNetwork/server/frontend.js"
+  },
+  {
+    "sha256": "16EC758FB80C00C498A72FA4EA2F2FAC685DF56F4878481EFE9D2C30287B7884",
+    "path": "ForgottenNetwork/server/index.js"
+  },
+  {
+    "sha256": "4374B1DB6F3CF8B67EE7A0170E93CB09BE278BB46C9BCA96F32631DF0A11D296",
+    "path": "ForgottenNetwork/server/media.js"
+  },
+  {
+    "sha256": "06999F152682CBBF2330E003AB6B5E6399989AE319DC29EAA72A43F79BBCDBFE",
+    "path": "ForgottenNetwork/server/migrate.js"
+  },
+  {
+    "sha256": "71A0FED97E7C8129D4D38E779FB273A38BF9E9B1E6575483F5EBDAB260CDFC61",
+    "path": "ForgottenNetwork/server/moderation.js"
+  },
+  {
+    "sha256": "63388ED21DB23B1E11A27E742D64C6B36091D8F65F647976C8E4A49371ED7296",
+    "path": "ForgottenNetwork/server/objectStorage.js"
+  },
+  {
+    "sha256": "598B841916AE5619931BB125F17906ED7B66FEDB5C23E6096FB01D390B9F43D8",
+    "path": "ForgottenNetwork/server/operations.js"
+  },
+  {
+    "sha256": "D35019828961017B75B08967D8CC890F2385416779EE66DB875C00ACE7ABD043",
+    "path": "ForgottenNetwork/server/package.json"
+  },
+  {
+    "sha256": "44A47030B7ED6BB2EA2506BAD12E1CAA14FD95CD6572AF301732F1E0C86220A0",
+    "path": "ForgottenNetwork/server/postgresWorldApi.js"
+  },
+  {
+    "sha256": "F8F6468B2AFAB9B6BF4124FDFCDBE8BB86550D0F4B1640FCB6DB0E2C7A39FC66",
+    "path": "ForgottenNetwork/server/security.js"
+  },
+  {
+    "sha256": "4BABE5489AAE58E17EE2875B65652C8C4516BF6D7D674101E79F2A837615884F",
+    "path": "ForgottenNetwork/server/worldApi.js"
+  },
+  {
+    "sha256": "D2112122139E8DFF8B3BEC08CC60E3F51BCC5E410094DF90C56ADADF4F8DAE60",
+    "path": "ForgottenNetwork/server/worldPolicy.js"
+  },
+  {
+    "sha256": "8E8FB86BADC00EC94EC8B65A2CB7369BB579BD0C82D1CCCD06DFD4E7604824D6",
+    "path": "ForgottenNetwork/shared/src/assets.ts"
+  },
+  {
+    "sha256": "9A42E9BEFCCD975616271CEB7C730D2041789683D2F33BB32D4E4AA12F4E942F",
+    "path": "ForgottenNetwork/shared/src/common.ts"
+  },
+  {
+    "sha256": "95CF0195D028D12B7E7F2D6137E0026EC9623AF4EAD70A4393CA5DB1C9B96153",
+    "path": "ForgottenNetwork/shared/src/entities.ts"
+  },
+  {
+    "sha256": "89AD3F3130898FBC99FBDF9C12F564D86271CE7D240549E4DF75CA4D170D1BED",
+    "path": "ForgottenNetwork/shared/src/index.ts"
+  },
+  {
+    "sha256": "E41D2AF1B1EFBAB9829C0AD1DA6F875A1AB533DCD2E38398D823F628C5558BFD",
+    "path": "ForgottenNetwork/shared/src/moderation.ts"
+  },
+  {
+    "sha256": "0B28A77CAA2A51CFAF70BCC8C44B230A78401404403CCDBF3B23EA0D76F0E4EE",
+    "path": "ForgottenNetwork/shared/src/operations.test.ts"
+  },
+  {
+    "sha256": "B8A1A20EC8122387446C990970216F317602A64DEA75F679FE227F0273ECB449",
+    "path": "ForgottenNetwork/shared/src/operations.ts"
+  },
+  {
+    "sha256": "7F4E708FE4824736C72C14BA3E8E34C4872284E9D6AEA6B8AB81F88DB2E7639B",
+    "path": "ForgottenNetwork/shared/src/world.ts"
+  },
+  {
+    "sha256": "5FE261436AD2BC82A9204F102421FF4E97D544EE08180D9A980B1A7418A65051",
+    "path": "ForgottenNetwork/shared/package.json"
+  },
+  {
+    "sha256": "A0EA9412FD71632C536F0878339B808D4C3B4D564D907F5633931551377DC592",
+    "path": "ForgottenNetwork/shared/tsconfig.json"
+  },
+  {
+    "sha256": "578C74D5C5B107D40F59EBB51747F3BE7904F807F1B76C11958A9486EB9232ED",
+    "path": "ForgottenNetwork/.env.example"
+  },
+  {
+    "sha256": "05F9A20B975D416C1477AF681543AC23BF900ABCF2DD93BB3A9907416270BD5C",
+    "path": "ForgottenNetwork/.gitignore"
+  },
+  {
+    "sha256": "30FE03F457AB501F98F8BCD19049F2B477FED5355628A972E8972E1C5A229F86",
+    "path": "ForgottenNetwork/.prettierignore"
+  },
+  {
+    "sha256": "8123EEAF657F177F4617A71E78584AC602B6CA7B4FA7E1E6C24E59C2DEE1A2B7",
+    "path": "ForgottenNetwork/.prettierrc.json"
+  },
+  {
+    "sha256": "7001A37560D1368123B193BD6BDF09724786AE3C8DF784521B345EF5F71C599C",
+    "path": "ForgottenNetwork/compose.yaml"
+  },
+  {
+    "sha256": "B39367CB95F75733B289F2AD985DAFD2E192B90C4DB62B9812FDD7AF9850CED4",
+    "path": "ForgottenNetwork/package.json"
+  },
+  {
+    "sha256": "F045022CE2313B8CB69D40BE9B3980B61D6F8A0B2F62AB005CBD163C5289100E",
+    "path": "ForgottenNetwork/pnpm-lock.yaml"
+  },
+  {
+    "sha256": "AA4CD347B8092EC7EB0BF0C444F0FEDBC7C18E5AC36B27B205461598B03E3663",
+    "path": "ForgottenNetwork/pnpm-workspace.yaml"
+  },
+  {
+    "sha256": "AD9A49D5F44FB9D097F5B9280A12029DC07CDDC1C43F477980267B355F105E2D",
+    "path": "ForgottenNetwork/PROJECT_GUIDE_AR.md"
+  },
+  {
+    "sha256": "77F3444877FF2AA64F15A80672A5413D9AB6761369D7803F6B589CD61EFF222F",
+    "path": "ForgottenNetwork/README.md"
+  },
+  {
+    "sha256": "764B7277095B89C2C2B86559FA15F62285CA1181917BDAE613125522588EFC7B",
+    "path": "ForgottenNetwork/render.yaml"
+  },
+  {
+    "sha256": "72054305E08B7A8F3BBBBE8E6256C832D6DEEB33E5589FC022B931634FAB96B5",
+    "path": "ForgottenNetwork/تقرير_تطوير_مشروع_Forgotten_Network.md"
+  },
+  {
+    "sha256": "398E84B9F2C4317775A15BDC9AED90B935841FA40A7934EFB2913A05C323D51E",
+    "path": "ForgottenNetwork/server/data/permanent.sqlite"
+  }
+]

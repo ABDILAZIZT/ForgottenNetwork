@@ -1,0 +1,11 @@
+packages:
+  - client
+  - server
+  - shared
+
+allowBuilds:
+  esbuild: true
+
+# Security fix for Express's transitive query parser (CVE-2026-82417 / CVE-2026-82562).
+overrides:
+  qs: ^6.16.0

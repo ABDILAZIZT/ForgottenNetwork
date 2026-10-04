@@ -1,0 +1,25 @@
+{
+  "name": "cyber-terrarium",
+  "version": "1.0.0",
+  "description": "A living pixel-art web experience",
+  "private": true,
+  "engines": {
+    "node": ">=22.13"
+  },
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "install:all": "pnpm install",
+    "start": "concurrently \"pnpm run start:server\" \"pnpm run start:client\"",
+    "start:server": "pnpm --dir server start",
+    "start:client": "pnpm --dir client dev",
+    "build": "pnpm --dir shared typecheck && pnpm --dir client build",
+    "lint": "pnpm --dir client lint && pnpm --dir client exec eslint ../shared/src --ext .ts --config .eslintrc.cjs --max-warnings 0 && node server/scripts/check-syntax.js",
+    "format": "pnpm --dir client exec prettier --write .. --ignore-path ../.prettierignore --ignore-unknown",
+    "format:check": "pnpm --dir client exec prettier --check .. --ignore-path ../.prettierignore --ignore-unknown",
+    "test": "pnpm --dir shared test && pnpm --dir client test && pnpm --dir server test",
+    "check": "pnpm run format:check && pnpm run lint && pnpm test && pnpm run build"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

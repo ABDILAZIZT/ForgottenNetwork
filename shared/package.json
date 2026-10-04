@@ -1,0 +1,17 @@
+{
+  "name": "@forgotten-network/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "vitest": "^1.6.0"
+  }
+}

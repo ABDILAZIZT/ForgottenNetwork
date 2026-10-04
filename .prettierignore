@@ -1,0 +1,6 @@
+**/node_modules
+**/dist
+**/package-lock.json
+server/db.json
+# Preserve the historical user-facing Arabic report without formatting it.
+تقرير_تطوير_مشروع_Forgotten_Network.md

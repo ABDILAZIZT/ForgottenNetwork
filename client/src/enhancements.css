@@ -1,0 +1,692 @@
+/* Shared, optional enhancements for both canvas modes. */
+:root {
+  --text-dim: #91a5b8;
+}
+button {
+  transition:
+    background-color 160ms,
+    border-color 160ms,
+    box-shadow 160ms;
+}
+button:hover:not(:disabled) {
+  box-shadow: 0 0 18px #a78bfa18;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: 2px solid #67e8f9 !important;
+  outline-offset: 3px;
+}
+.fn-hidden {
+  display: none;
+}
+.fn-expedition-launch {
+  position: fixed;
+  right: 25px;
+  top: 78px;
+  z-index: 34;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  color: #e5dcff;
+  background: #171322ef !important;
+  border: 1px solid #a78bfa55 !important;
+  border-radius: 30px !important;
+  cursor: pointer;
+  font:
+    600 12px 'Space Grotesk',
+    sans-serif;
+}
+#world-root .fn-expedition-launch {
+  top: auto;
+  bottom: 120px;
+  right: 85px;
+}
+.fn-expedition-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #04050bd9;
+  backdrop-filter: blur(12px);
+}
+.fn-expedition-modal {
+  width: min(1040px, 100%);
+  max-height: calc(100dvh - 48px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #a78bfa50;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #181326, #0b101a);
+  color: #eeeaf8;
+  box-shadow: 0 30px 100px #000a;
+  font:
+    14px/1.6 'Inter',
+    sans-serif;
+  animation: fn-enhance-enter 300ms ease;
+}
+.fn-expedition-modal header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 22px 28px;
+  border-bottom: 1px solid #ffffff14;
+}
+.fn-expedition-modal h2 {
+  font:
+    600 28px/1.2 'Space Grotesk',
+    sans-serif;
+  margin: 6px 0;
+}
+.fn-eyebrow,
+.fn-rarity {
+  font:
+    10px/1.5 'Fira Code',
+    monospace;
+  letter-spacing: 0.13em;
+  color: #b5a6d3;
+  text-transform: uppercase;
+}
+.fn-expedition-modal nav {
+  display: flex;
+  gap: 8px;
+  padding: 12px 28px;
+  border-bottom: 1px solid #ffffff14;
+}
+.fn-expedition-modal button,
+.fn-market button,
+.fn-tutorial button {
+  background: #29213d;
+  color: #eee7ff;
+  border: 1px solid #a78bfa35;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  min-height: 42px;
+}
+.fn-expedition-modal button[aria-pressed='true'],
+.fn-market button[aria-pressed='true'] {
+  background: #b9a1fa;
+  color: #160e27;
+}
+.fn-expedition-modal button:disabled,
+.fn-market button:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+.fn-expedition-scroll {
+  padding: 24px 28px;
+  overflow-y: auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+.fn-expedition-scroll p {
+  color: #b2acc5;
+  margin: 10px 0;
+}
+.fn-journey-hero,
+.fn-market-feature {
+  position: relative;
+  padding: 32px;
+  border: 1px solid #a78bfa40;
+  border-radius: 14px;
+  background:
+    radial-gradient(ellipse at 90% 15%, #6549af55, transparent 60%),
+    linear-gradient(130deg, #1a2038, #171020);
+  overflow: hidden;
+}
+.fn-journey-hero > span,
+.fn-market-feature > span {
+  color: #83e5e3;
+  font:
+    10px 'Fira Code',
+    monospace;
+  letter-spacing: 0.16em;
+}
+.fn-journey-hero h3 {
+  font:
+    500 48px 'Space Grotesk',
+    sans-serif;
+  margin: 16px 0;
+}
+.fn-journey-actions,
+.fn-market-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 20px 0;
+}
+.fn-achievements {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 26px 0;
+}
+.fn-achievements span {
+  padding: 10px 14px;
+  border: 1px solid #ffffff20;
+  border-radius: 8px;
+  color: #aaa2ba;
+}
+.fn-achievements .earned {
+  color: #fcd887;
+  background: #5b431c30;
+  border-color: #fbbf2460;
+}
+.fn-activity {
+  display: grid;
+  gap: 8px;
+  margin: 15px 0 26px;
+}
+.fn-activity button {
+  display: flex;
+  justify-content: space-between;
+  text-align: left;
+  gap: 16px;
+  background: #ffffff04;
+}
+.fn-activity small {
+  color: #b4a4ce;
+}
+.fn-preferences label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+}
+.fn-preferences select,
+.fn-studio select {
+  background: #1d1730 !important;
+  color: #eee7ff;
+  padding: 9px;
+  border: 1px solid #a78bfa60;
+  border-radius: 6px;
+}
+.fn-preferences input {
+  accent-color: #a78bfa;
+}
+.fn-market {
+  position: relative;
+}
+.fn-market-feature h2 {
+  font:
+    600 clamp(28px, 4vw, 44px)/1.15 'Space Grotesk',
+    sans-serif;
+  margin: 18px 0;
+}
+.fn-market-feature em {
+  font-style: normal;
+  color: #c4b5fd;
+}
+.fn-market-feature small {
+  display: block;
+  color: #b2a4c7;
+  margin-top: 12px;
+}
+.fn-market-balance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  margin-top: 20px;
+}
+.fn-market-balance strong {
+  color: #74e7d4;
+}
+.fn-market-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 16px;
+}
+.fn-market-card {
+  --rarity: #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px;
+  border: 1px solid color-mix(in srgb, var(--rarity) 35%, transparent);
+  border-radius: 12px;
+  background: linear-gradient(145deg, #ffffff06, #ffffff02);
+  transition:
+    transform 180ms,
+    box-shadow 180ms;
+}
+.fn-market-card.rare {
+  --rarity: #60a5fa;
+}
+.fn-market-card.epic {
+  --rarity: #c084fc;
+}
+.fn-market-card.legendary {
+  --rarity: #fbbf24;
+}
+.fn-market-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 12px 30px #0005,
+    0 0 20px color-mix(in srgb, var(--rarity) 10%, transparent);
+}
+.fn-market-card .fn-rarity {
+  color: var(--rarity);
+}
+.fn-market-card h3 {
+  font:
+    600 19px 'Space Grotesk',
+    sans-serif;
+}
+.fn-market-card p {
+  min-height: 65px;
+  color: #b9b0cb;
+}
+.fn-market-card strong {
+  color: #ede5fa;
+}
+.fn-market-card strong small {
+  font-weight: 400;
+  font-size: 11px;
+  color: #aaa0bb;
+}
+.fn-market-card button:first-of-type {
+  margin-top: auto;
+  background: #a78bfa;
+  color: #171023;
+  font-weight: 600;
+}
+.fn-market-card button:last-of-type {
+  background: transparent;
+  font-size: 11px;
+}
+.fn-item-art {
+  height: 92px;
+  display: grid;
+  place-items: center;
+  font-size: 64px;
+  color: var(--rarity);
+  background: radial-gradient(ellipse, #a78bfa15, transparent 65%);
+  text-shadow: 0 0 30px var(--rarity);
+}
+.fn-item-art.rainbow_brush {
+  background: linear-gradient(120deg, #fb71851a, #22d3ee22, #a78bfa30);
+}
+.fn-purchase-confirm {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  padding: 20px;
+  background: #262037;
+  border: 1px solid #a78bfa;
+  border-radius: 12px;
+  box-shadow: 0 10px 35px #0008;
+}
+.fn-purchase-confirm button {
+  margin: 8px 8px 0 0;
+}
+.fn-market-notice {
+  min-height: 24px;
+  color: #7cead4 !important;
+}
+.fn-market-confetti {
+  position: fixed;
+  inset: 20% 10% auto;
+  color: #fcd887;
+  text-align: center;
+  font-size: 48px;
+  pointer-events: none;
+  z-index: 1300;
+  animation: fn-confetti 1.8s ease-out both;
+}
+.fn-studio {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 256px;
+  gap: 24px;
+  padding: 20px;
+  border: 1px solid #22d3ee55;
+  border-radius: 12px;
+  margin: 20px 0;
+  background: #0d1020;
+}
+.fn-studio canvas {
+  width: 256px;
+  max-width: 100%;
+  aspect-ratio: 1;
+  border: 1px solid #a78bfa66;
+  border-radius: 4px;
+  touch-action: none;
+}
+.fn-studio label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+}
+.fn-studio button {
+  margin: 4px;
+}
+.fn-studio-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.fn-studio-colors button {
+  width: 28px;
+  min-height: 28px;
+  padding: 0;
+  margin: 0;
+}
+.fn-ad-slot {
+  margin: 24px auto 0;
+  max-width: 100%;
+  color: #a9a6bb;
+  border: 1px solid #a78bfa25;
+  border-radius: 8px;
+  padding: 10px;
+  background: #0b0c15;
+  text-align: center;
+}
+.fn-ad-slot > small {
+  font:
+    9px 'Fira Code',
+    monospace;
+  letter-spacing: 0.1em;
+}
+.fn-ad-slot > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  min-height: 50px;
+}
+.fn-ad-slot strong {
+  color: #c4b5fd;
+  font:
+    500 15px 'Space Grotesk',
+    sans-serif;
+}
+.fn-ad-slot span {
+  font:
+    10px 'Fira Code',
+    monospace;
+}
+.fn-ad-slot.rectangle {
+  width: 300px;
+}
+.fn-ad-slot.rectangle > div {
+  min-height: 215px;
+}
+.fn-ad-slot.banner {
+  width: 320px;
+}
+.fn-ad-slot.leaderboard {
+  width: 728px;
+}
+.fn-ad-slot.leaderboard > div {
+  min-height: 65px;
+}
+.fn-weather {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  overflow: hidden;
+}
+.fn-weather.night {
+  background: #20113a12;
+}
+.fn-weather.day {
+  background: #ffe8b206;
+}
+.fn-weather.crt {
+  background-image: repeating-linear-gradient(0deg, transparent 0 3px, #00000016 3px 4px);
+}
+.fn-weather i {
+  position: absolute;
+  top: -10px;
+  width: 3px;
+  height: 3px;
+  background: #c4b5fd;
+  opacity: 0.4;
+  animation: fn-weather-fall 10s linear infinite;
+}
+.fn-weather.rain i {
+  width: 1px;
+  height: 36px;
+  background: linear-gradient(transparent, #22d3ee);
+}
+.fn-weather.snow i {
+  background: #e0f2fe;
+}
+.fn-weather.particles i {
+  animation-direction: reverse;
+  box-shadow: 0 0 12px #c4b5fd;
+}
+.fn-pointer-aura {
+  position: fixed;
+  left: -13px;
+  top: -13px;
+  width: 26px;
+  height: 26px;
+  border: 1px solid #22d3ee88;
+  border-radius: 50%;
+  box-shadow: 0 0 18px #a78bfa77;
+  pointer-events: none;
+  z-index: 40;
+}
+.fn-pointer-trail {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+}
+.fn-pointer-trail i {
+  position: absolute;
+  color: #e4c6ff;
+  font-size: 14px;
+  animation: fn-spark 750ms ease-out both;
+}
+body[data-cosmetics~='night_vision'] .pw-canvas,
+body[data-cosmetics~='night_vision'] #world-root > canvas {
+  filter: brightness(1.35);
+}
+body[data-cosmetics~='avatar_frame'] .pw-profile-button {
+  animation: fn-frame 4s linear infinite;
+}
+body[data-cosmetics~='minimap_skin'] .pw-minimap,
+body[data-cosmetics~='minimap_skin'] .fn-minimap {
+  border: 2px solid #22d3ee;
+  box-shadow: 0 0 20px #fbbf2422;
+}
+.fn-tutorial,
+.fn-expedition-notice,
+.fn-offline {
+  position: fixed;
+  z-index: 90;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  padding: 14px 20px;
+  border: 1px solid #a78bfa70;
+  border-radius: 10px;
+  background: #171322f5;
+  color: #e9e3f8;
+  font:
+    13px/1.6 'Inter',
+    sans-serif;
+}
+.fn-tutorial {
+  bottom: 150px;
+  width: 340px;
+}
+.fn-expedition-notice {
+  bottom: 125px;
+  cursor: pointer;
+}
+.fn-offline {
+  top: 85px;
+}
+.fn-typewriter {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  animation: fn-typewriter 2.8s steps(34, end) both;
+  color: #c4b5fd;
+  font:
+    12px 'Fira Code',
+    monospace;
+  margin: 12px 0;
+}
+.fn-cinematic {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 60% 30%, #a78bfa15, transparent 60%);
+}
+.fn-cinematic i {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: #c4b5fd;
+  box-shadow: 0 0 15px #22d3ee;
+  animation: fn-weather-fall 20s linear infinite reverse;
+}
+.fn-onboarding-welcome .welcome-copy {
+  position: relative;
+  animation: fn-enhance-enter 1.2s ease;
+}
+.fn-onboarding-welcome .welcome-copy > button {
+  animation: fn-frame 4s ease-in-out infinite;
+}
+.pw-world .pw-muted,
+.pw-world .pw-forever-copy,
+.pw-world .pw-world-heading p {
+  color: #aaa1bc;
+}
+.pw-busy {
+  background-size: 200% 100%;
+  background-image: linear-gradient(90deg, #211d30, #39304b, #211d30);
+  animation: fn-skeleton 1.8s linear infinite;
+}
+@keyframes fn-enhance-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fn-typewriter {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+@keyframes fn-weather-fall {
+  to {
+    transform: translate(35px, 110vh);
+  }
+}
+@keyframes fn-confetti {
+  from {
+    opacity: 1;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(180px) rotate(8deg);
+  }
+}
+@keyframes fn-spark {
+  to {
+    opacity: 0;
+    transform: translate(12px, 22px) scale(0.2);
+  }
+}
+@keyframes fn-frame {
+  50% {
+    box-shadow: 0 0 20px #a78bfa66;
+    border-color: #22d3ee;
+  }
+}
+@keyframes fn-skeleton {
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (max-width: 720px) {
+  .fn-expedition-launch {
+    top: 65px;
+    right: 12px;
+    padding: 6px 10px;
+  }
+  .fn-expedition-launch span {
+    display: none;
+  }
+  #world-root .fn-expedition-launch {
+    bottom: 130px;
+    right: 12px;
+  }
+  .fn-expedition-backdrop {
+    padding: 8px;
+  }
+  .fn-expedition-modal {
+    max-height: calc(100dvh - 16px);
+    border-radius: 12px;
+  }
+  .fn-expedition-modal header,
+  .fn-expedition-scroll {
+    padding: 16px;
+  }
+  .fn-expedition-modal nav {
+    padding: 10px 16px;
+  }
+  .fn-market-feature,
+  .fn-journey-hero {
+    padding: 20px;
+  }
+  .fn-studio {
+    grid-template-columns: 1fr;
+  }
+  .fn-activity button {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .fn-journey-actions button {
+    width: 100%;
+  }
+  .fn-typewriter {
+    font-size: 10px;
+  }
+  .fn-offline {
+    top: 110px;
+    width: calc(100% - 32px);
+  }
+}
+@media (pointer: coarse) {
+  .pw-world button,
+  .fn-toolbar .fn-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fn-weather i,
+  .fn-pointer-trail,
+  .fn-pointer-aura {
+    display: none;
+  }
+}
+[data-reduced-motion='true'] .fn-weather i {
+  display: none;
+}
