@@ -4,12 +4,14 @@ services:
     runtime: node
     plan: free
     region: frankfurt
-    buildCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm run build
-    startCommand: node server/migrate.js && node server/index.js
+    buildCommand: npm install -g pnpm && pnpm install --no-frozen-lockfile && pnpm run build
+    startCommand: node server/index.js
     healthCheckPath: /api/v1/health/ready
     envVars:
       - key: NODE_VERSION
         value: '22'
+      - key: CI
+        value: 'true'
       - key: NODE_ENV
         value: production
       - key: VITE_WORLD_MODE
