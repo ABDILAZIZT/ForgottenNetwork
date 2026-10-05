@@ -65,6 +65,8 @@ import { useModal } from '../components/useModal';
 import './world.css';
 import Expedition from '../components/Expedition';
 import { recordExploration } from '../exploration';
+import { readDraftMode, saveDraftMode, draftPreferenceKey } from './draftPreference';
+import { download } from '../download';
 
 const COLORS = [
   '#a78bfa',
@@ -111,20 +113,12 @@ const initialSettings: Settings = {
   animated: false,
   mediaWidth: 128,
   mediaRatio: 1,
-  draftMode: false,
+  draftMode: true,
   enabled: false,
   reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
 };
 type Session = { token: string; user: Identity };
 type Pending = { actor: string; element: Placement };
-function download(blob: Blob, name: string) {
-  const url = URL.createObjectURL(blob),
-    link = document.createElement('a');
-  link.href = url;
-  link.download = name;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 export default function PermanentWorld() {
   const canvas = useRef<HTMLCanvasElement>(null),
@@ -144,6 +138,7 @@ export default function PermanentWorld() {
     [exploring, setExploring] = useState(false);
   const [settings, setSettings] = useState<Settings>({
     ...initialSettings,
+    draftMode: readDraftMode(session?.user.id),
     color: session?.user.color || initialSettings.color,
     enabled: Boolean(session),
   });
@@ -179,6 +174,7 @@ export default function PermanentWorld() {
   const [sound, setSound] = useState(false),
     [confetti, setConfetti] = useState(false),
     [busy, setBusy] = useState(false);
+  const [exportFile, setExportFile] = useState<Blob | null>(null);
   const [recent, setRecent] = useState<string[]>(() =>
     readSaved<string[]>('fn_canvas_colors', []).filter((c) => /^#[a-f0-9]{6}$/i.test(c)),
   );
@@ -361,6 +357,7 @@ export default function PermanentWorld() {
     try {
       await loadArea(bounds);
       const blob = await engine.current!.snapshot(bounds);
+      setExportFile(blob);
       download(blob, 'forgotten-network-' + Date.now() + '.png');
       toastMessage('Your canvas snapshot is ready.');
     } catch (error) {
@@ -429,6 +426,15 @@ export default function PermanentWorld() {
       clearTimeout(toastTimer.current);
     };
   }, [toastMessage]);
+  useEffect(() => {
+    const restore = (event?: StorageEvent) => {
+      if (!event || event.key === null || event.key === draftPreferenceKey(session?.user.id || ''))
+        setSettings((s) => ({ ...s, draftMode: readDraftMode(session?.user.id) }));
+    };
+    restore();
+    window.addEventListener('storage', restore);
+    return () => window.removeEventListener('storage', restore);
+  }, [session?.user.id]);
   useEffect(() => {
     engine.current?.configure({ ...settings, enabled: Boolean(session) });
   }, [settings, session]);
@@ -860,6 +866,14 @@ export default function PermanentWorld() {
         void uploadMedia(e.dataTransfer.files[0]);
       }}
     >
+      {exportFile && (
+        <button
+          className="pw-export-download"
+          onClick={() => download(exportFile, 'forgotten-network.png')}
+        >
+          Download prepared PNG
+        </button>
+      )}
       <canvas className="pw-canvas" ref={canvas} aria-label="Permanent collaborative canvas" />
       <Expedition
         x={view.x + view.width / 2}
@@ -1132,7 +1146,16 @@ export default function PermanentWorld() {
             <input
               type="checkbox"
               checked={settings.draftMode}
-              onChange={(e) => setSettings((s) => ({ ...s, draftMode: e.target.checked }))}
+              onChange={(e) => {
+                if (!session) return;
+                try {
+                  saveDraftMode(session.user.id, e.target.checked);
+                  setSettings((s) => ({ ...s, draftMode: e.target.checked }));
+                } catch {
+                  setSettings((s) => ({ ...s, draftMode: true }));
+                  toastMessage('Could not save your preference. Draft mode remains on.');
+                }
+              }}
             />
             Draft before publishing
           </label>
@@ -1159,6 +1182,7 @@ export default function PermanentWorld() {
         </span>
         <span className="pw-status">
           <span className={connected ? 'online' : ''} />
+          {settings.draftMode ? 'Draft mode · ' : 'Publish mode · '}
           {status}
         </span>
         <span className="pw-current-tool">

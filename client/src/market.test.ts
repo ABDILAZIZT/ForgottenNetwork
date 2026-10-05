@@ -14,7 +14,7 @@ afterEach(() => {
 });
 it('deducts the catalog price once and rejects duplicate and unaffordable purchases', () => {
   expect(purchaseMarketItem('rainbow_brush')).toBe('Purchased');
-  expect(readMarket()).toEqual({ coins: 0, owned: ['rainbow_brush'] });
+  expect(readMarket()).toEqual({ coins: 0, owned: ['rainbow_brush'], nextGrantAt: 0 });
   expect(purchaseMarketItem('rainbow_brush')).toBe('Already owned.');
   expect(purchaseMarketItem('glow_pen')).toBe('Not enough demo coins.');
   expect(readMarket().coins).toBe(0);
@@ -23,7 +23,7 @@ it('does not sell unimplemented server features or unknown products', () => {
   topUpMarketDemo();
   expect(purchaseMarketItem('expanded_canvas')).toBe('This feature is a preview.');
   expect(purchaseMarketItem('forged-product')).toBe('This feature is a preview.');
-  expect(readMarket()).toEqual({ coins: 1650, owned: [] });
+  expect(readMarket().coins).toBe(1650);
 });
 it('does not report success when persistence fails', () => {
   vi.stubGlobal('localStorage', {
@@ -42,4 +42,18 @@ it('bounds activity and deduplicates replayed placements', () => {
   for (let i = 0; i < 25; i++) recordExploration(i * 512, 0, 0, 'New place', 'visit-' + i);
   expect(readExploration().activity).toHaveLength(20);
   expect(readExploration().badges).toContain('Cartographer');
+});
+
+it('limits repeated grants across reloads and purchases without reducing legacy balances', () => {
+  topUpMarketDemo(1000);
+  expect(readMarket().coins).toBe(1650);
+  expect(topUpMarketDemo(1001)).toContain('24 hours');
+  purchaseMarketItem('rainbow_brush');
+  expect(topUpMarketDemo(1002)).toContain('24 hours');
+  topUpMarketDemo(86401000);
+  expect(readMarket().coins).toBe(3000);
+  expect(topUpMarketDemo(172801000)).toContain('cap');
+  localStorage.setItem('fn_market_v1', JSON.stringify({ coins: 100000, owned: [] }));
+  expect(topUpMarketDemo()).toContain('cap');
+  expect(readMarket().coins).toBe(100000);
 });

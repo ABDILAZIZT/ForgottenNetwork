@@ -13,11 +13,19 @@ export async function loadArt(e: Placement) {
   if (images.has(id)) return;
   const promise = new Promise<void>((resolve, reject) => {
     const img = new Image();
+    const timeout = setTimeout(() => {
+      img.src = '';
+      reject(new Error('Image loading timed out. Try export again.'));
+    }, 15000);
     img.onload = () => {
+      clearTimeout(timeout);
       images.set(id, img);
       resolve();
     };
-    img.onerror = () => reject(new Error('Image unavailable'));
+    img.onerror = () => {
+      clearTimeout(timeout);
+      reject(new Error('Image unavailable'));
+    };
     img.src = '/api/canvas/assets/' + id;
   }).then(async () => {
     if (e.content.animated) frames.set(id, await GifDecoder.decode('/api/canvas/assets/' + id));

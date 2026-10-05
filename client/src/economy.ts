@@ -256,11 +256,16 @@ export function readMarket() {
       value.coins >= 0 &&
       Array.isArray(value.owned)
     )
-      return { coins: value.coins as number, owned: value.owned.filter(isString) as string[] };
+      return {
+        coins: value.coins as number,
+        owned: value.owned.filter(isString) as string[],
+        nextGrantAt:
+          Number.isSafeInteger(value.nextGrantAt) && value.nextGrantAt >= 0 ? value.nextGrantAt : 0,
+      };
   } catch {
     /* A malformed or unavailable store starts a fresh demo. */
   }
-  return { coins: 150, owned: [] as string[] };
+  return { coins: 150, owned: [] as string[], nextGrantAt: 0 };
 }
 export function purchaseMarketItem(id: string) {
   const item = MARKET_ITEMS.find((entry) => entry.id === id);
@@ -271,17 +276,27 @@ export function purchaseMarketItem(id: string) {
   try {
     localStorage.setItem(
       'fn_market_v1',
-      JSON.stringify({ coins: ledger.coins - item.cost, owned: [...ledger.owned, id] }),
+      JSON.stringify({ ...ledger, coins: ledger.coins - item.cost, owned: [...ledger.owned, id] }),
     );
     return 'Purchased';
   } catch {
     return 'Device storage is unavailable. No purchase was saved.';
   }
 }
-export function topUpMarketDemo() {
+export const DEMO_COIN_CAP = 3000;
+export const DEMO_GRANT_COOLDOWN = 24 * 60 * 60 * 1000;
+export function topUpMarketDemo(now = Date.now()) {
   const ledger = readMarket();
+  if (now < ledger.nextGrantAt) return 'Free demo coins are available once every 24 hours.';
+  if (ledger.coins >= DEMO_COIN_CAP) return 'Demo wallet cap reached (3000 coins).';
+  const amount = Math.min(1500, DEMO_COIN_CAP - ledger.coins);
   localStorage.setItem(
     'fn_market_v1',
-    JSON.stringify({ ...ledger, coins: Math.min(100000, ledger.coins + 1500) }),
+    JSON.stringify({
+      ...ledger,
+      coins: ledger.coins + amount,
+      nextGrantAt: now + DEMO_GRANT_COOLDOWN,
+    }),
   );
+  return 'Added ' + amount + ' free demo coins. Next grant in 24 hours.';
 }

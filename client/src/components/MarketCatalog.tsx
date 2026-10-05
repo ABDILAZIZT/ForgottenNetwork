@@ -47,9 +47,8 @@ export default function MarketCatalog() {
           <button
             onClick={() => {
               try {
-                topUpMarketDemo();
+                setNotice(topUpMarketDemo());
                 refresh();
-                setNotice('Added 1500 free demo coins.');
               } catch {
                 setNotice('Could not save demo coins.');
               }
@@ -59,7 +58,8 @@ export default function MarketCatalog() {
           </button>
         </div>
         <small>
-          Separate Studio demo wallet. No cash value. Purchases and effects stay on this device.
+          Separate Studio demo wallet. No cash value. Free grants: once per 24 hours, up to 3000
+          coins. Purchases and effects stay on this device.
         </small>
       </div>
       <div className="fn-market-filters" aria-label="Collection categories">
