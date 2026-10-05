@@ -135,6 +135,45 @@ function createPermanentCanvas({ filename, origins = [] } = {}) {
       res.status(result.duplicate ? 200 : 201).json({ ...result, profile: get().profile(user.id) });
     }),
   );
+  router.get(
+    '/my-artworks',
+    route((req, res) => {
+      const user = auth(req);
+      res.json({
+        elements: get()
+          .db.prepare('SELECT * FROM canvas_active WHERE owner_id=? ORDER BY seq DESC LIMIT 400')
+          .all(user.id)
+          .map((r) => get().row(r)),
+        removed: get()
+          .db.prepare(
+            'SELECT element_id AS id,removed_at AS removedAt FROM canvas_removed WHERE actor_id=? ORDER BY removed_at DESC LIMIT 100',
+          )
+          .all(user.id),
+      });
+    }),
+  );
+  router.post(
+    '/elements/:id/restore',
+    route((req, res) => {
+      const user = auth(req);
+      limit('restore:' + user.id, 10, 60000);
+      const art = get().restore(req.params.id, user);
+      statsCache = null;
+      broadcast('element:restore', art);
+      res.json(art);
+    }),
+  );
+  router.post(
+    '/elements/remove',
+    route((req, res) => {
+      const user = auth(req);
+      limit('remove:' + user.id, 10, 60000);
+      const result = get().remove(req.body, user);
+      statsCache = null;
+      broadcast('elements:remove', result);
+      res.json(result);
+    }),
+  );
   router.post(
     '/assets',
     route(async (req, res) => {

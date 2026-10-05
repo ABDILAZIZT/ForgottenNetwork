@@ -5,6 +5,7 @@ import type { Artwork, Blocked, Content, Peer, Placement, Point, Tool, View } fr
 
 export interface Settings {
   tool: Tool;
+  artistId?: string;
   color: string;
   size: number;
   opacity: number;
@@ -29,6 +30,7 @@ interface Hooks {
   drafts: (count: number) => void;
   export: (view: View) => void;
   signIn: () => void;
+  eraseArtwork: (art: Artwork) => void;
 }
 export class PermanentEngine {
   camera = new Camera();
@@ -66,6 +68,7 @@ export class PermanentEngine {
   private width = 1;
   private height = 1;
   private dpr = 1;
+  private removed = new Set<string>();
   private occupied = new Map<string, Artwork>();
   private pointers = new Map<number, Point>();
   private drawing: Point[] = [];
@@ -182,6 +185,7 @@ export class PermanentEngine {
   }
   add(elements: Artwork[], animate = false) {
     for (const e of elements) {
+      if (this.removed.has(e.id)) continue;
       const fresh = !this.elements.has(e.id);
       this.elements.set(e.id, e);
       e.cells.forEach(([x, y]) => this.occupied.set(x + ',' + y, e));
@@ -206,6 +210,35 @@ export class PermanentEngine {
           e.cells.forEach(([x, y]) => this.occupied.delete(x + ',' + y));
         }
     }
+  }
+  remove(ids: string[]) {
+    ids.forEach((id) => {
+      this.removed.add(id);
+      this.elements.delete(id);
+    });
+    this.occupied.clear();
+    for (const art of [...this.elements.values()].sort((a, b) => a.zIndex - b.zIndex))
+      art.cells.forEach(([x, y]) => this.occupied.set(x + ',' + y, art));
+  }
+  restore(art: Artwork) {
+    this.removed.delete(art.id);
+    this.add([art]);
+  }
+  reconcile(elements: Artwork[], bounds: View, snapshot: number) {
+    const ids = new Set(elements.map((e) => e.id));
+    for (const [id, e] of this.elements) {
+      if (
+        !ids.has(id) &&
+        e.zIndex <= snapshot &&
+        e.x < bounds.x + bounds.width &&
+        e.x + e.width > bounds.x &&
+        e.y < bounds.y + bounds.height &&
+        e.y + e.height > bounds.y
+      )
+        this.elements.delete(id);
+    }
+    this.occupied.clear();
+    this.add([...this.elements.values(), ...elements]);
   }
   setPeers(peers: Peer[]) {
     const ids = new Set(peers.map((p) => p.connectionId));
@@ -359,7 +392,12 @@ export class PermanentEngine {
     }
     const point = this.world(e.offsetX, e.offsetY);
     if (this.settings.tool === 'eraser') {
+      const draftCount = this.draftList.length;
       this.erase(point);
+      if (draftCount === this.draftList.length) {
+        const art = this.occupied.get(Math.floor(point[0] / 8) + ',' + Math.floor(point[1] / 8));
+        if (art && art.ownerId === this.settings.artistId) this.hooks.eraseArtwork(art);
+      }
       return;
     }
     this.start = point;
@@ -553,7 +591,10 @@ export class PermanentEngine {
         this.previewCells = placementCells(this.preview);
       }
       for (const [x, y] of this.previewCells)
-        if (this.occupied.has(x + ',' + y)) {
+        if (
+          this.occupied.has(x + ',' + y) &&
+          this.occupied.get(x + ',' + y)?.ownerId !== this.settings.artistId
+        ) {
           ctx.fillStyle = '#f43f5e80';
           ctx.fillRect(x * 8, y * 8, 8, 8);
         }

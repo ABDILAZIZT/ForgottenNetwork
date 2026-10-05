@@ -94,7 +94,7 @@ const TOOLS: Array<[Tool, LucideIcon, string, string]> = [
   ['image', ImagePlus, 'Image / GIF', 'I'],
   ['sticker', Sticker, 'Stickers', 'S'],
   ['stamp', UserRound, 'Avatar stamp', 'M'],
-  ['eraser', Eraser, 'Erase drafts', 'E'],
+  ['eraser', Eraser, 'Erase my artwork', 'E'],
   ['export', ArrowDownToLine, 'Export area', 'D'],
 ];
 const STICKERS = ['planet', 'heart', 'flower', 'bolt', 'star', 'orbit', 'spark', 'peace'];
@@ -174,6 +174,10 @@ export default function PermanentWorld() {
   const [sound, setSound] = useState(false),
     [confetti, setConfetti] = useState(false),
     [busy, setBusy] = useState(false);
+  const [myArt, setMyArt] = useState<{
+    elements: Artwork[];
+    removed: { id: string; removedAt: string }[];
+  }>({ elements: [], removed: [] });
   const [exportFile, setExportFile] = useState<Blob | null>(null);
   const [recent, setRecent] = useState<string[]>(() =>
     readSaved<string[]>('fn_canvas_colors', []).filter((c) => /^#[a-f0-9]{6}$/i.test(c)),
@@ -196,6 +200,7 @@ export default function PermanentWorld() {
     uploadRef = useRef<(file: File) => void>(() => undefined),
     ourConnection = useRef(''),
     commitRef = useRef<(e: Placement) => void>(() => undefined),
+    removeRef = useRef<(arts: Artwork[]) => void>(() => undefined),
     exportRef = useRef<(v: View) => void>(() => undefined);
   const toastMessage = useCallback((text: string) => {
     setToast(text);
@@ -289,7 +294,7 @@ export default function PermanentWorld() {
           socket.current?.readyState === WebSocket.OPEN &&
             socket.current.send(JSON.stringify({ type: 'draw:commit', data: {} }));
         } catch (error) {
-          if (error instanceof ApiError && [400, 403, 409].includes(error.status)) {
+          if (error instanceof ApiError && [400, 403, 409, 410, 422].includes(error.status)) {
             const details = error.details;
             engine.current?.flash((details.blocked || []) as Blocked[]);
             queueRef.current = queueRef.current.filter((p) => p.element.id !== pending!.element.id);
@@ -330,7 +335,40 @@ export default function PermanentWorld() {
       );
     }
   };
+  removeRef.current = async (arts) => {
+    const identity = latest.current.session;
+    if (!identity || !arts.length) {
+      toastMessage('No eligible artwork selected.');
+      return;
+    }
+    if (processing.current || queueRef.current.some((p) => p.actor === identity.user.id)) {
+      toastMessage('Wait for pending publications before removing artwork.');
+      return;
+    }
+    if (
+      !window.confirm(
+        'Remove ' +
+          arts.length +
+          ' of your published artworks? Entire selected artworks will be hidden and unused cells released. Other artists and your drafts are untouched. History is retained for recovery.',
+      )
+    )
+      return;
+    try {
+      const result = await api<{ removed: string[] }>('/elements/remove', identity.token, {
+        id: crypto.randomUUID(),
+        targets: arts.map((art) => ({ id: art.id, version: art.zIndex })),
+      });
+      engine.current?.remove(result.removed);
+      setSelected(null);
+      refreshAt.current = 0;
+      await refresh();
+      toastMessage('Removed ' + result.removed.length + ' artworks.');
+    } catch (error) {
+      toastMessage((error as Error).message);
+    }
+  };
   const loadArea = useCallback(async (bounds: View) => {
+    let snapshot = 0;
     let next: number | null = 0;
     const all: Artwork[] = [];
     do {
@@ -341,11 +379,14 @@ export default function PermanentWorld() {
         height: String(bounds.height),
         after: String(next),
       });
-      const result: { elements: Artwork[]; next: number | null } = await api('/elements?' + params);
+      const result: { elements: Artwork[]; next: number | null; snapshot: number } = await api(
+        '/elements?' + params,
+      );
       all.push(...result.elements);
+      snapshot = result.snapshot;
       next = result.next;
     } while (next !== null);
-    engine.current?.add(all);
+    engine.current?.reconcile(all, bounds, snapshot);
     return all;
   }, []);
   exportRef.current = async (bounds) => {
@@ -402,6 +443,7 @@ export default function PermanentWorld() {
       },
       export: (v) => exportRef.current(v),
       signIn: () => setWelcome(true),
+      eraseArtwork: (art) => removeRef.current([art]),
     });
     engine.current = world;
     const params = new URLSearchParams(location.search);
@@ -436,7 +478,11 @@ export default function PermanentWorld() {
     return () => window.removeEventListener('storage', restore);
   }, [session?.user.id]);
   useEffect(() => {
-    engine.current?.configure({ ...settings, enabled: Boolean(session) });
+    engine.current?.configure({
+      ...settings,
+      artistId: session?.user.id,
+      enabled: Boolean(session),
+    });
   }, [settings, session]);
   useEffect(() => {
     const world = engine.current;
@@ -508,9 +554,16 @@ export default function PermanentWorld() {
         if (type === 'ready') {
           ourConnection.current = data.connectionId;
           setConnected(true);
-          setStatus('Live · every mark is permanent');
+          setStatus('Live · artists control their own work');
           void refresh();
           void drain();
+        }
+        if (type === 'element:restore') engine.current?.restore(data);
+        if (type === 'elements:remove') {
+          engine.current?.remove(data.removed);
+          setSelected((prev) => (prev && data.removed.includes(prev.id) ? null : prev));
+          refreshAt.current = 0;
+          void refresh();
         }
         if (type === 'presence') {
           setPeers(data);
@@ -595,6 +648,10 @@ export default function PermanentWorld() {
         .catch(() => undefined);
   }, [selected?.id]);
   useEffect(() => {
+    if (panel === 'profile' && session)
+      void api<typeof myArt>('/my-artworks', session.token)
+        .then(setMyArt)
+        .catch((error) => toastMessage(error.message));
     if (panel === 'notifications' && session) {
       setUnread(0);
       void api<Notice[]>('/notifications', session.token)
@@ -1008,7 +1065,8 @@ export default function PermanentWorld() {
           </div>
           {settings.tool === 'eraser' ? (
             <p className="pw-muted">
-              Only unpublished drafts can be erased. Published marks stay forever.
+              Erase drafts by dragging. Click your published artwork to remove the whole artwork
+              after confirmation. Other artists are protected.
             </p>
           ) : (
             <>
@@ -1171,7 +1229,7 @@ export default function PermanentWorld() {
             </div>
           )}
           <div className="pw-permanent-note">
-            <Lock size={12} /> Published marks cannot be changed
+            <Lock size={12} /> Only you can remove your published marks
           </div>
         </section>
       )}
@@ -1247,7 +1305,7 @@ export default function PermanentWorld() {
             >
               <Star size={17} />
               <span>
-                <small>ART OF THE DAY</small>
+                <small>COMMUNITY SPOTLIGHT</small>
                 <strong>
                   {stats.spotlight.ownerName}'s {stats.spotlight.type}
                 </strong>
@@ -1315,7 +1373,7 @@ export default function PermanentWorld() {
               <X size={16} />
             </button>
           </div>
-          <span className="pw-eyebrow">A PERMANENT PIECE OF THIS WORLD</span>
+          <span className="pw-eyebrow">A PIECE OF THIS SHARED WORLD</span>
           <h2>
             {selected.type === 'text'
               ? selected.content.text
@@ -1339,6 +1397,11 @@ export default function PermanentWorld() {
               </dd>
             </div>
           </dl>
+          {selected.ownerId === session?.user.id && (
+            <button className="pw-wide-button" onClick={() => removeRef.current([selected])}>
+              Delete this artwork
+            </button>
+          )}
           <div className="pw-reactions">
             {(['heart', 'fire', 'star'] as const).map((kind, i) => {
               const Icon = [Heart, Flame, Star][i];
@@ -1584,8 +1647,93 @@ export default function PermanentWorld() {
               )}
             </>
           )}
+          {panel === 'profile' && session && (
+            <section aria-label="Manage my artwork">
+              <h3>Your published artworks</h3>
+              {myArt.elements.map((art) => (
+                <button
+                  key={art.id}
+                  className="pw-wide-button"
+                  onClick={() => {
+                    setSelected(art);
+                    setPanel(null);
+                    engine.current?.fly(art.x, art.y);
+                  }}
+                >
+                  {art.type} at {art.x}, {art.y}
+                </button>
+              ))}
+              <h3>Recently removed (30-day recovery)</h3>
+              {myArt.removed.map((item) => (
+                <button
+                  key={item.id}
+                  className="pw-wide-button"
+                  onClick={async () => {
+                    if (
+                      !window.confirm(
+                        'Restore this removed artwork if the space is still available?',
+                      )
+                    )
+                      return;
+                    try {
+                      const art = await api<Artwork>(
+                        '/elements/' + item.id + '/restore',
+                        session.token,
+                        {},
+                      );
+                      engine.current?.restore(art);
+                      setMyArt(await api<typeof myArt>('/my-artworks', session.token));
+                      toastMessage('Artwork restored.');
+                    } catch (error) {
+                      toastMessage((error as Error).message);
+                    }
+                  }}
+                >
+                  Restore {item.id.slice(0, 8)} ({new Date(item.removedAt).toLocaleDateString()})
+                </button>
+              ))}
+            </section>
+          )}
           {panel === 'settings' && (
             <>
+              <p>
+                Clear Space removes only your published artworks fully inside the visible area. It
+                does not find free space or clear drafts.
+              </p>
+              <button
+                className="pw-wide-button"
+                onClick={() => {
+                  const arts = [...(engine.current?.elements.values() || [])].filter(
+                    (e) =>
+                      e.ownerId === session?.user.id &&
+                      e.x >= view.x &&
+                      e.y >= view.y &&
+                      e.x + e.width <= view.x + view.width &&
+                      e.y + e.height <= view.y + view.height,
+                  );
+                  removeRef.current(arts.slice(0, 400));
+                }}
+              >
+                Clear Space: my visible artworks
+              </button>
+              <button
+                className="pw-wide-button"
+                onClick={() => {
+                  if (
+                    !window.confirm(
+                      'Clear unpublished drafts on this device? Published artwork is untouched.',
+                    )
+                  )
+                    return;
+                  if (engine.current) {
+                    engine.current.draftList = [];
+                    setDrafts(0);
+                  }
+                  if (session) localStorage.setItem('fn_canvas_drafts:' + session.user.id, '[]');
+                }}
+              >
+                Clear Drafts on this device
+              </button>
               <label className="pw-check">
                 <input
                   type="checkbox"
@@ -1710,8 +1858,8 @@ export default function PermanentWorld() {
               </details>
             </div>
             <small className="pw-forever-copy">
-              <Lock size={12} /> Your published artwork is permanent. Your identity stays on this
-              device.
+              <Lock size={12} /> Published artwork is public. You can remove your own work. Your
+              identity stays on this device.
             </small>
           </div>
           <div className="pw-welcome-art-label">

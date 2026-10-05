@@ -1581,3 +1581,20 @@
     transition: none !important;
   }
 }
+
+.pw-export-download {
+  position: fixed;
+  top: 82px;
+  left: 100px;
+  z-index: 40;
+  background: #26233c !important;
+  padding: 12px;
+  border: 1px solid #a78bfa !important;
+}
+.pw-world button:focus-visible,
+.pw-world a:focus-visible,
+.pw-world input:focus-visible,
+.pw-world canvas:focus-visible {
+  outline: 3px solid #22d3ee;
+  outline-offset: 3px;
+}

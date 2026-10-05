@@ -138,6 +138,15 @@ class CanvasStore {
             table +
             " BEGIN SELECT RAISE(ABORT, 'Accepted artwork is permanent'); END;",
         );
+    // Migration v2: immutable artwork remains history; active occupancy becomes rebuildable.
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS canvas_removed(element_id TEXT PRIMARY KEY REFERENCES canvas_elements(id), actor_id TEXT NOT NULL, removed_at TEXT NOT NULL, reason TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS canvas_mutations(id TEXT PRIMARY KEY, actor_id TEXT NOT NULL, payload TEXT NOT NULL, result TEXT NOT NULL, created_at TEXT NOT NULL);
+      CREATE VIEW IF NOT EXISTS canvas_active AS SELECT * FROM canvas_elements WHERE id NOT IN (SELECT element_id FROM canvas_removed);
+      DROP TRIGGER IF EXISTS immutable_pixel_ownership_DELETE;
+      DROP TRIGGER IF EXISTS immutable_pixel_ownership_UPDATE;
+      PRAGMA user_version=2;
+    `);
     if (seed && !this.db.prepare('SELECT 1 FROM canvas_elements LIMIT 1').get()) this.seed();
   }
   transaction(work) {
@@ -220,11 +229,13 @@ class CanvasStore {
       : null;
   }
   element(id) {
-    return this.row(this.db.prepare('SELECT * FROM canvas_elements WHERE id=?').get(id));
+    return this.row(this.db.prepare('SELECT * FROM canvas_active WHERE id=?').get(id));
   }
   place(input, user) {
     const e = normalizeElement(input);
     return this.transaction(() => {
+      if (this.db.prepare('SELECT 1 FROM canvas_removed WHERE element_id=?').get(e.id))
+        throw fail('This placement was removed. It cannot be replayed.', 410);
       const existing = this.element(e.id);
       if (existing) {
         if (existing.ownerId !== user.id) throw fail('Placement ID already in use.', 409);
@@ -243,7 +254,7 @@ class CanvasStore {
         blocked = [];
       for (const [cx, cy] of targetCells(e)) {
         const owner = check.get(cx, cy);
-        if (owner) blocked.push({ cx, cy, ...owner });
+        if (owner && owner.ownerId !== user.id) blocked.push({ cx, cy, ...owner });
         else free.push([cx, cy]);
       }
       if (!free.length || (blocked.length && !['brush', 'pixel'].includes(e.type)))
@@ -273,7 +284,7 @@ class CanvasStore {
           JSON.stringify(free),
           new Date().toISOString(),
         );
-      const own = this.db.prepare('INSERT INTO pixel_ownership VALUES(?,?,?,?)');
+      const own = this.db.prepare('INSERT OR IGNORE INTO pixel_ownership VALUES(?,?,?,?)');
       for (const [cx, cy] of free) own.run(cx, cy, user.id, e.id);
       this.areas.delete(user.id);
       const zone = this.challenge();
@@ -292,6 +303,75 @@ class CanvasStore {
       return { element: this.element(e.id), blocked: blocked.slice(0, 200), duplicate: false };
     });
   }
+  restore(id, user) {
+    return this.transaction(() => {
+      const removed = this.db.prepare('SELECT * FROM canvas_removed WHERE element_id=?').get(id);
+      const art = this.row(this.db.prepare('SELECT * FROM canvas_elements WHERE id=?').get(id));
+      if (!removed || !art) throw fail('Removed artwork not found.', 404);
+      if (art.ownerId !== user.id || removed.actor_id !== user.id)
+        throw fail('Only your own removals may be restored.', 403);
+      if (Date.now() - Date.parse(removed.removed_at) > 30 * 86400000)
+        throw fail('Recovery window expired.', 410);
+      for (const [x, y] of art.cells) {
+        const owner = this.db
+          .prepare('SELECT owner_id FROM pixel_ownership WHERE cell_x=? AND cell_y=?')
+          .get(x, y);
+        if (owner && owner.owner_id !== user.id)
+          throw fail('Another artist now owns this space. Restoration is blocked.', 409);
+      }
+      this.db.prepare('DELETE FROM canvas_removed WHERE element_id=?').run(id);
+      const claim = this.db.prepare('INSERT OR IGNORE INTO pixel_ownership VALUES(?,?,?,?)');
+      for (const [x, y] of art.cells) claim.run(x, y, user.id, id);
+      this.areas.delete(user.id);
+      return art;
+    });
+  }
+  remove(input, user) {
+    if (
+      !input ||
+      !/^[a-zA-Z0-9_-]{8,80}$/.test(input.id || '') ||
+      !Array.isArray(input.targets) ||
+      !input.targets.length ||
+      input.targets.length > 400
+    )
+      throw fail('Choose 1 to 400 specific artworks to remove.');
+    const payload = JSON.stringify(input.targets);
+    return this.transaction(() => {
+      const replay = this.db.prepare('SELECT * FROM canvas_mutations WHERE id=?').get(input.id);
+      if (replay) {
+        if (replay.actor_id !== user.id || replay.payload !== payload)
+          throw fail('Removal ID already in use.', 409);
+        return JSON.parse(replay.result);
+      }
+      const arts = input.targets.map((target) => {
+        const art = this.element(target.id);
+        if (!art) throw fail('Artwork changed or was removed. Refresh before trying again.', 409);
+        if (art.ownerId !== user.id) throw fail('You can only remove your own artwork.', 403);
+        if (art.zIndex !== target.version)
+          throw fail('Artwork version changed. Refresh first.', 409);
+        return art;
+      });
+      if (new Set(arts.map((a) => a.id)).size !== arts.length) throw fail('Duplicate targets.');
+      const now = new Date().toISOString();
+      for (const art of arts)
+        this.db
+          .prepare('INSERT INTO canvas_removed VALUES(?,?,?,?)')
+          .run(art.id, user.id, now, 'owner removal');
+      // Rebuild only this artist's claims from surviving history. Other identities are untouched.
+      this.db.prepare('DELETE FROM pixel_ownership WHERE owner_id=?').run(user.id);
+      const claim = this.db.prepare('INSERT OR IGNORE INTO pixel_ownership VALUES(?,?,?,?)');
+      for (const row of this.db
+        .prepare('SELECT * FROM canvas_active WHERE owner_id=? ORDER BY seq')
+        .all(user.id))
+        for (const [x, y] of JSON.parse(row.cells)) claim.run(x, y, user.id, row.id);
+      this.areas.delete(user.id);
+      const result = { removed: arts.map((a) => a.id) };
+      this.db
+        .prepare('INSERT INTO canvas_mutations VALUES(?,?,?,?,?)')
+        .run(input.id, user.id, payload, JSON.stringify(result), now);
+      return result;
+    });
+  }
   load({ x = -1024, y = -1024, width = 2048, height = 2048, after = 0 }) {
     if (
       ![x, y, width, height, after].every(Number.isFinite) ||
@@ -303,10 +383,11 @@ class CanvasStore {
       throw fail('Invalid view bounds.');
     const rows = this.db
       .prepare(
-        'SELECT * FROM canvas_elements WHERE x<? AND x+width>? AND y<? AND y+height>? AND seq>? ORDER BY seq LIMIT 401',
+        'SELECT * FROM canvas_active WHERE x<? AND x+width>? AND y<? AND y+height>? AND seq>? ORDER BY seq LIMIT 401',
       )
       .all(x + width, x, y + height, y, after);
     return {
+      snapshot: this.db.prepare('SELECT COALESCE(max(seq),0) AS n FROM canvas_elements').get().n,
       elements: rows.slice(0, 400).map((r) => this.row(r)),
       next: rows.length > 400 ? rows[399].seq : null,
     };
@@ -371,9 +452,12 @@ class CanvasStore {
   profile(id) {
     const summary = this.db
       .prepare(
-        "SELECT count(*) AS elements,COALESCE(sum(json_array_length(cells)*64),0) AS pixels,COALESCE(sum(CASE WHEN type IN ('image','stamp') THEN 1 ELSE 0 END),0) AS images FROM canvas_elements WHERE owner_id=?",
+        "SELECT count(*) AS elements,COALESCE(sum(json_array_length(cells)*64),0) AS pixels,COALESCE(sum(CASE WHEN type IN ('image','stamp') THEN 1 ELSE 0 END),0) AS images FROM canvas_active WHERE owner_id=?",
       )
       .get(id);
+    summary.pixels = this.db
+      .prepare('SELECT count(*)*64 AS n FROM pixel_ownership WHERE owner_id=?')
+      .get(id).n;
     const last = this.row(
       this.db
         .prepare('SELECT * FROM canvas_elements WHERE owner_id=? ORDER BY seq DESC LIMIT 1')
@@ -386,7 +470,7 @@ class CanvasStore {
       .get(id, id).count;
     const largest = this.largestArea(id);
     const crown = this.db
-      .prepare('SELECT DISTINCT owner_id AS id FROM canvas_elements')
+      .prepare('SELECT DISTINCT owner_id AS id FROM canvas_active')
       .all()
       .every((owner) => this.largestArea(owner.id) <= largest);
     const badges = [];
@@ -417,12 +501,13 @@ class CanvasStore {
   stats() {
     const total = this.db
       .prepare(
-        'SELECT count(*) AS artworks,COALESCE(sum(json_array_length(cells)*64),0) AS pixels,count(DISTINCT owner_id) AS artists FROM canvas_elements',
+        'SELECT count(*) AS artworks,COALESCE(sum(json_array_length(cells)*64),0) AS pixels,count(DISTINCT owner_id) AS artists FROM canvas_active',
       )
       .get();
+    total.pixels = this.db.prepare('SELECT count(*)*64 AS n FROM pixel_ownership').get().n;
     const leaderboard = this.db
       .prepare(
-        'SELECT owner_id AS id,owner_name AS name,owner_color AS color,sum(json_array_length(cells)*64) AS pixels,count(*) AS elements FROM canvas_elements WHERE created_at>=? GROUP BY owner_id ORDER BY pixels DESC LIMIT 10',
+        'SELECT owner_id AS id,owner_name AS name,owner_color AS color,sum(json_array_length(cells)*64) AS pixels,count(*) AS elements FROM canvas_active WHERE created_at>=? GROUP BY owner_id ORDER BY pixels DESC LIMIT 10',
       )
       .all(new Date(Date.now() - 7 * 86400000).toISOString());
     const density = this.db
@@ -433,10 +518,15 @@ class CanvasStore {
     const spotlight = this.row(
       this.db
         .prepare(
-          'SELECT e.* FROM canvas_elements e LEFT JOIN canvas_reactions r ON r.element_id=e.id GROUP BY e.id ORDER BY count(r.user_id) DESC,e.seq DESC LIMIT 1',
+          'SELECT e.* FROM canvas_active e LEFT JOIN canvas_reactions r ON r.element_id=e.id GROUP BY e.id ORDER BY count(r.user_id) DESC,e.seq DESC LIMIT 1',
         )
         .get(),
     );
+    for (const entry of leaderboard)
+      entry.pixels = this.db
+        .prepare('SELECT count(*)*64 AS n FROM pixel_ownership WHERE owner_id=?')
+        .get(entry.id).n;
+    leaderboard.sort((a, b) => b.pixels - a.pixels);
     return { ...total, leaderboard, density, spotlight, challenge: this.challenge() };
   }
   addAsset(user, buffer, mime, width, height) {

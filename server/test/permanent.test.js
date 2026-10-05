@@ -41,10 +41,10 @@ test('canvas identity secrets are hashed; client ownership fields cannot forge a
   assert.equal(result.element.ownerColor, '#22d3ee');
 });
 
-test('colliding shapes reject atomically, including overwriting your own accepted art', (t) => {
+test('colliding shapes reject other identities while allowing owner overlays', (t) => {
   const { store, alice, bob } = fixture(t);
   const first = store.place(mark(), alice.user).element;
-  for (const user of [alice.user, bob.user]) {
+  for (const user of [bob.user]) {
     assert.throws(
       () => store.place(mark({ x: 10008 }), user),
       (e) => e.status === 409 && e.blocked[0].ownerName === 'Alice',
@@ -53,6 +53,8 @@ test('colliding shapes reject atomically, including overwriting your own accepte
   assert.equal(store.stats().artworks, 1);
   assert.equal(store.db.prepare('SELECT count(*) AS n FROM pixel_ownership').get().n, 4);
   assert.deepEqual(store.element(first.id), first);
+  store.place(mark({ x: 10008 }), alice.user);
+  assert.equal(store.stats().pixels, 384);
 });
 
 test('freehand clips occupied cells and commits only free cells', (t) => {
@@ -100,7 +102,7 @@ test('database triggers prevent mutation or deletion of artwork, ownership, and 
   const { store, alice } = fixture(t);
   store.place(mark(), alice.user);
   store.addAsset(alice.user, Buffer.from('test'), 'image/png', 1, 1);
-  for (const table of ['canvas_elements', 'pixel_ownership', 'canvas_assets']) {
+  for (const table of ['canvas_elements', 'canvas_assets']) {
     assert.throws(() => store.db.exec('DELETE FROM ' + table), /permanent/);
     assert.throws(() => store.db.exec('UPDATE ' + table + ' SET owner_id=owner_id'), /permanent/);
   }
@@ -344,4 +346,85 @@ test('HTTP and WebSocket integration: concurrent claims, presence, live art, cha
     rejected.once('error', (error) => resolve(error.message)),
   );
   assert.match(reason, /403/);
+});
+
+test('owner removal is atomic, versioned, idempotent and releases only unoccupied cells', (t) => {
+  const { store, alice, bob } = fixture(t);
+  const a = store.place(mark(), alice.user).element;
+  const overlay = store.place(mark(), alice.user).element;
+  const other = store.place(mark({ x: 10100 }), bob.user).element;
+  const request = { id: randomUUID(), targets: [{ id: a.id, version: a.zIndex }] };
+  assert.throws(
+    () => store.remove(request, bob.user),
+    (e) => e.status === 403,
+  );
+  assert.throws(
+    () => store.remove({ ...request, targets: [{ id: a.id, version: -1 }] }, alice.user),
+    (e) => e.status === 409,
+  );
+  assert.throws(
+    () =>
+      store.remove(
+        { ...request, targets: [...request.targets, { id: other.id, version: other.zIndex }] },
+        alice.user,
+      ),
+    (e) => e.status === 403,
+  );
+  assert.ok(store.element(a.id));
+  assert.deepEqual(store.remove(request, alice.user).removed, [a.id]);
+  assert.deepEqual(store.remove(request, alice.user).removed, [a.id]);
+  assert.equal(store.element(a.id), null);
+  assert.ok(store.element(other.id));
+  assert.equal(store.profile(alice.user.id).pixels, 256);
+  assert.throws(
+    () => store.place({ ...a }, alice.user),
+    (e) => e.status === 410,
+  );
+  store.remove(
+    { id: randomUUID(), targets: [{ id: overlay.id, version: overlay.zIndex }] },
+    alice.user,
+  );
+  assert.equal(store.profile(alice.user.id).pixels, 0);
+  assert.deepEqual(store.findFree(a.x, a.y, 16, 16), { x: a.x, y: a.y });
+  assert.equal(store.load({ x: a.x, y: a.y, width: 16, height: 16 }).elements.length, 0);
+  store.restore(a.id, alice.user);
+  assert.equal(store.profile(alice.user.id).pixels, 256);
+  store.remove({ id: randomUUID(), targets: [{ id: a.id, version: a.zIndex }] }, alice.user);
+  store.place(mark(), bob.user);
+  assert.throws(
+    () => store.restore(a.id, alice.user),
+    (e) => e.status === 409,
+  );
+});
+
+test('direct HTTP owner deletion rejects a second identity and persists for other sessions', async (t) => {
+  const app = express();
+  app.use(express.json());
+  const canvas = createPermanentCanvas({ filename: ':memory:' });
+  app.use('/api/canvas', canvas.router);
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise((r) => server.once('listening', r));
+  const close = canvas.attach(server);
+  t.after(async () => {
+    close();
+    await new Promise((r) => server.close(r));
+  });
+  const base = 'http://127.0.0.1:' + server.address().port + '/api/canvas';
+  const req = async (path, token, body) => {
+    const res = await fetch(base + path, {
+      method: body ? 'POST' : 'GET',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + (token || '') },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    return { status: res.status, data: await res.json() };
+  };
+  const a = (await req('/identity', null, { name: 'Alice', color: '#22d3ee' })).data;
+  const b = (await req('/identity', null, { name: 'Bob', color: '#22d3ee' })).data;
+  const art = (await req('/elements', a.token, mark())).data.element;
+  const removal = { id: randomUUID(), targets: [{ id: art.id, version: art.zIndex }] };
+  assert.equal((await req('/elements/remove', b.token, removal)).status, 403);
+  assert.equal((await req('/elements/remove', null, removal)).status, 401);
+  assert.equal((await req('/elements/remove', a.token, removal)).status, 200);
+  assert.equal((await req('/elements/' + art.id, b.token)).status, 404);
+  assert.equal((await req('/elements', b.token, mark())).status, 201);
 });
