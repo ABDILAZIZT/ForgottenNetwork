@@ -97,7 +97,7 @@ test.after(async () => {
 });
 
 test('migrations are executable and repeatable, readiness is PostgreSQL-backed', async () => {
-  assert.equal((await pool.query('SELECT * FROM schema_migrations')).rowCount, 3);
+  assert.equal((await pool.query('SELECT * FROM schema_migrations')).rowCount, 4);
   assert.equal((await call('/health/ready')).body.storage, 'postgresql');
 });
 test('chunk writes protect versions, history, target identity and deletion tombstones', async () => {
@@ -414,4 +414,49 @@ test('object-storage mode stores only processed bytes and returns authorized med
   const ownerRead = await fetch(url, { headers: { 'x-test-actor': other } });
   assert.equal(ownerRead.status, 200);
   assert.match((await ownerRead.json()).data, /^data:image\/png;base64,/);
+});
+
+test('Classic rejects foreign chunk edits and clearing even with the correct version', async () => {
+  await pool.query('UPDATE users SET publishing_suspended_until=NULL WHERE id IN ($1,$2)', [
+    member,
+    other,
+  ]);
+  const route = '/worlds/' + world + '/chunks/70/70';
+  const body = {
+    operationId: crypto.randomUUID(),
+    expectedVersion: 0,
+    zone: 'static',
+    layers: Array(3).fill(Buffer.alloc(65536).toString('base64')),
+  };
+  assert.equal((await call(route, { user: member, method: 'PUT', body })).status, 201);
+  assert.equal(
+    (
+      await call(route, {
+        user: other,
+        method: 'PUT',
+        body: { ...body, operationId: crypto.randomUUID(), expectedVersion: 1 },
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (
+      await call(route, {
+        user: other,
+        method: 'DELETE',
+        headers: { 'if-match-version': '1', 'idempotency-key': crypto.randomUUID() },
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (
+      await call(route, {
+        user: member,
+        method: 'PUT',
+        body: { ...body, operationId: crypto.randomUUID(), expectedVersion: 1 },
+      })
+    ).status,
+    201,
+  );
 });

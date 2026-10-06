@@ -4,7 +4,7 @@ const { WebSocketServer, WebSocket } = require('ws');
 const { CanvasStore, normalizeElement, fail } = require('./store');
 const path = require('node:path');
 
-function createPermanentCanvas({ filename, origins = [] } = {}) {
+function createPermanentCanvas({ filename, origins = [], pool } = {}) {
   let store;
   const get = () =>
     store ||
@@ -69,6 +69,48 @@ function createPermanentCanvas({ filename, origins = [] } = {}) {
       e.y < peer.view.y + peer.view.height &&
       e.y + e.height > peer.view.y);
 
+  router.post(
+    '/classic-session',
+    route(async (req, res) => {
+      const user = auth(req);
+      limit('classic-session:' + user.id, 5, 60000);
+      if (!req.session) throw fail('Classic sessions are unavailable.', 503);
+      if (pool) {
+        await pool.query(
+          "INSERT INTO users(id,auth_provider,auth_subject,display_name) VALUES($1,'canvas',$1,$2) ON CONFLICT(id) DO NOTHING",
+          [user.id, user.name],
+        );
+        const result = await pool.query(
+          'SELECT auth_provider,deleted_at,publishing_suspended_until FROM users WHERE id=$1',
+          [user.id],
+        );
+        const account = result.rows[0];
+        if (
+          !account ||
+          account.auth_provider !== 'canvas' ||
+          account.deleted_at ||
+          (account.publishing_suspended_until &&
+            new Date(account.publishing_suspended_until) > new Date())
+        )
+          throw fail('This Classic account cannot publish.', 403);
+      }
+      await new Promise((resolve, reject) =>
+        req.session.regenerate((error) => (error ? reject(error) : resolve())),
+      );
+      req.session.userId = user.id;
+      req.session.user = {
+        id: user.id,
+        displayName: user.name,
+        avatarUrl: null,
+        role: 'member',
+        publishingAllowed: true,
+      };
+      await new Promise((resolve, reject) =>
+        req.session.save((error) => (error ? reject(error) : resolve())),
+      );
+      res.json({ ready: true });
+    }),
+  );
   router.get(
     '/health',
     route((_req, res) => {

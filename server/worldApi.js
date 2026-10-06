@@ -383,6 +383,13 @@ function createWorldApi({ getDB, saveDB, authToken }) {
     if (!replay) return undefined;
     const id = `${cx},${cy}`;
     const current = shared.chunks[id];
+    if (current && current.ownerId !== req.actor.id)
+      return sendError(
+        res,
+        403,
+        'FORBIDDEN',
+        'This chunk belongs to another artist or protected legacy history.',
+      );
     const currentVersion = current?.version || 0;
     if (currentVersion !== expectedVersion) {
       return sendError(
@@ -411,7 +418,7 @@ function createWorldApi({ getDB, saveDB, authToken }) {
       updatedAt: now,
       updatedBy: req.actor.id,
     };
-    shared.chunks[id] = chunk;
+    shared.chunks[id] = { ...chunk, ownerId: req.actor.id };
     const response = { chunk, operationId, acceptedAt: now };
     shared.operations[replay.key] = { hash: replay.hash, response, createdAt: now };
     shared.world.updatedAt = now;
@@ -437,6 +444,8 @@ function createWorldApi({ getDB, saveDB, authToken }) {
     const replay = replayOrConflict(shared, 'chunk:delete', operationId, body, res);
     if (!replay) return undefined;
     const id = `${cx},${cy}`;
+    if (shared.chunks[id] && shared.chunks[id].ownerId !== req.actor.id)
+      return sendError(res, 403, 'FORBIDDEN', 'Only the chunk owner can clear it.');
     const currentVersion = shared.chunks[id]?.version || 0;
     if (currentVersion !== expectedVersion) {
       return sendError(res, 409, 'CONFLICT', 'The chunk changed before deletion.', {

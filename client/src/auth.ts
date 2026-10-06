@@ -38,7 +38,7 @@ export class AuthClient {
     return (await response.json()) as SessionUser;
   }
 
-  signIn(returnTo = window.location.pathname) {
+  signIn(returnTo = window.location.pathname + window.location.search) {
     window.location.assign(
       `${this.baseUrl}/auth/login?returnTo=${encodeURIComponent(returnTo || '/')}`,
     );

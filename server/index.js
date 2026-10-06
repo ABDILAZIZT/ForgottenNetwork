@@ -41,7 +41,7 @@ app.use('/api', (req, res, next) =>
 );
 app.use(express.json({ limit: '12mb' }));
 configureAuthentication(app, { pool: databasePool });
-const permanentCanvas = createPermanentCanvas({ origins: allowedOrigins });
+const permanentCanvas = createPermanentCanvas({ origins: allowedOrigins, pool: databasePool });
 app.use('/api/canvas', permanentCanvas.router);
 app.use('/api', publishingIdentityProtection);
 const memberLimiter = rateLimit({

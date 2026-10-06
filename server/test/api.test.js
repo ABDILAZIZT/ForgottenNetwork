@@ -7,6 +7,7 @@ const crypto = require('node:crypto');
 
 const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'forgotten-network-'));
 process.env.DB_PATH = path.join(testDir, 'db.json');
+process.env.PERMANENT_DB_PATH = ':memory:';
 process.env.DEV_AUTH_TOKEN = 'phase-4-test-token';
 
 const { app } = require('../index');
@@ -164,4 +165,29 @@ test('entity writes are authenticated and idempotent', async () => {
     entities.some((entity) => entity.id === entityId),
     true,
   );
+});
+
+test('canvas identity opens a real Classic session without trusting a supplied user ID', async () => {
+  const identityResponse = await fetch(baseUrl + '/api/canvas/identity', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'Bridge Tester', color: '#22d3ee' }),
+  });
+  const identity = await identityResponse.json();
+  const bad = await fetch(baseUrl + '/api/canvas/classic-session', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ userId: identity.user.id }),
+  });
+  assert.equal(bad.status, 401);
+  const good = await fetch(baseUrl + '/api/canvas/classic-session', {
+    method: 'POST',
+    headers: { authorization: 'Bearer ' + identity.token, 'content-type': 'application/json' },
+    body: '{}',
+  });
+  assert.equal(good.status, 200);
+  const cookie = good.headers.get('set-cookie').split(';')[0];
+  const me = await fetch(baseUrl + '/api/v1/me', { headers: { cookie } });
+  assert.equal(me.status, 200);
+  assert.equal((await me.json()).id, identity.user.id);
 });

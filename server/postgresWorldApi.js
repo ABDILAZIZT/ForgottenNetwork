@@ -256,7 +256,7 @@ function createPostgresWorldApi({ pool, objectStorage = null }) {
           'can_draw',
         );
         const current = await client.query(
-          `SELECT version FROM chunks
+          `SELECT version,owner_id,ownership_locked,deleted_at FROM chunks
            WHERE world_id = $1 AND chunk_x = $2 AND chunk_y = $3 FOR UPDATE`,
           [req.params.worldId, cx, cy],
         );
@@ -274,14 +274,26 @@ function createPostgresWorldApi({ pool, objectStorage = null }) {
             },
           );
         }
+        if (
+          current.rowCount &&
+          !current.rows[0].deleted_at &&
+          (current.rows[0].ownership_locked || current.rows[0].owner_id !== req.actor.id)
+        )
+          throw new ApiProblem(
+            403,
+            'FORBIDDEN',
+            'This Classic chunk belongs to another artist or has protected legacy history. Choose an empty chunk.',
+          );
         const buffers = layers.map((layer) => Buffer.from(layer, 'base64'));
         const updated = await client.query(
           `INSERT INTO chunks
-             (world_id, chunk_x, chunk_y, version, zone, background_data, main_data, overlay_data, updated_by)
-           VALUES ($1, $2, $3, 1, $4, $5, $6, $7, $8)
+             (world_id, chunk_x, chunk_y, version, zone, background_data, main_data, overlay_data, updated_by, owner_id)
+           VALUES ($1, $2, $3, 1, $4, $5, $6, $7, $8, $8)
            ON CONFLICT (world_id, chunk_x, chunk_y) DO UPDATE SET
              version = chunks.version + 1,
              deleted_at = NULL,
+             owner_id = EXCLUDED.owner_id,
+             ownership_locked = false,
              zone = EXCLUDED.zone,
              background_data = EXCLUDED.background_data,
              main_data = EXCLUDED.main_data,
@@ -339,7 +351,7 @@ function createPostgresWorldApi({ pool, objectStorage = null }) {
           'can_draw',
         );
         const current = await client.query(
-          `SELECT version FROM chunks
+          `SELECT version,owner_id,ownership_locked,deleted_at FROM chunks
            WHERE world_id = $1 AND chunk_x = $2 AND chunk_y = $3 FOR UPDATE`,
           [req.params.worldId, cx, cy],
         );
@@ -350,6 +362,12 @@ function createPostgresWorldApi({ pool, objectStorage = null }) {
             currentVersion,
           });
         }
+        if (
+          current.rowCount &&
+          !current.rows[0].deleted_at &&
+          (current.rows[0].ownership_locked || current.rows[0].owner_id !== req.actor.id)
+        )
+          throw new ApiProblem(403, 'FORBIDDEN', 'Only the owner can clear this Classic chunk.');
         const blank = Buffer.alloc(128 * 128 * 4);
         const cleared = await client.query(
           `INSERT INTO chunks (world_id, chunk_x, chunk_y, version, background_data, main_data, overlay_data, updated_by, deleted_at)

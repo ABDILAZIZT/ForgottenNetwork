@@ -422,7 +422,41 @@ export default function WorldOverlay({
                 {authLoading ? 'CHECKING…' : 'SIGN IN'}
               </button>
             ) : (
-              <span className="fn-auth-visitor">READ ONLY</span>
+              <button
+                className="fn-auth-button"
+                type="button"
+                disabled={authLoading}
+                onClick={async () => {
+                  try {
+                    const identity = JSON.parse(
+                      localStorage.getItem('fn_canvas_identity') || 'null',
+                    );
+                    if (!identity?.token) {
+                      location.assign('/');
+                      return;
+                    }
+                    const response = await fetch('/api/canvas/classic-session', {
+                      method: 'POST',
+                      credentials: 'include',
+                      headers: {
+                        Authorization: 'Bearer ' + identity.token,
+                        'Content-Type': 'application/json',
+                      },
+                      body: '{}',
+                    });
+                    if (!response.ok) {
+                      const result = await response.json();
+                      window.alert(result.error?.message || 'Could not sign in.');
+                      return;
+                    }
+                    location.reload();
+                  } catch {
+                    window.alert('Could not connect. Your saved work has not changed.');
+                  }
+                }}
+              >
+                SIGN IN WITH ARTIST IDENTITY
+              </button>
             ))}
           <button className="fn-btn fn-btn-sm" title="Save world [Ctrl+S]" onClick={onSave}>
             <Download size={14} />
