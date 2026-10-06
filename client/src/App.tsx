@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { download } from './download';
 import WorldOverlay from './components/WorldOverlay';
 import Minimap from './components/Minimap';
 import type { MinimapChunk, MinimapViewport } from './components/Minimap';
@@ -340,7 +341,6 @@ export default function App() {
     try {
       const json = await repository.exportWorld({ skipPendingWrites: !canPublish });
       const blob = new Blob([json], { type: 'application/json' });
-      const { download } = await import('./download');
       download(blob, `forgotten-network-${Date.now()}.json`);
       showToast('World exported ✓');
     } catch {

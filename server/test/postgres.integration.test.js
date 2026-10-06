@@ -97,7 +97,7 @@ test.after(async () => {
 });
 
 test('migrations are executable and repeatable, readiness is PostgreSQL-backed', async () => {
-  assert.equal((await pool.query('SELECT * FROM schema_migrations')).rowCount, 4);
+  assert.equal((await pool.query('SELECT * FROM schema_migrations')).rowCount, 5);
   assert.equal((await call('/health/ready')).body.storage, 'postgresql');
 });
 test('chunk writes protect versions, history, target identity and deletion tombstones', async () => {

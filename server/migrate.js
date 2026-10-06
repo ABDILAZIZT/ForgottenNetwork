@@ -30,8 +30,14 @@ async function runMigrations(pool, directory = path.join(__dirname, 'migrations'
       }
       await client.query('BEGIN');
       try {
+        // v4 only changes attribution metadata. Its published checksum must remain stable,
+        // and the old history trigger would otherwise insert an existing version again.
+        if (name === '004_classic_ownership.sql')
+          await client.query('ALTER TABLE chunks DISABLE TRIGGER chunks_history');
         // Existing files own outer transaction markers; migration + checksum must commit together.
         await client.query(sql.replace(/^\s*BEGIN\s*;/i, '').replace(/COMMIT\s*;\s*$/i, ''));
+        if (name === '004_classic_ownership.sql')
+          await client.query('ALTER TABLE chunks ENABLE TRIGGER chunks_history');
         await client.query('INSERT INTO schema_migrations (name, sha256) VALUES ($1, $2)', [
           name,
           sha256,

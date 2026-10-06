@@ -390,7 +390,10 @@ export default function PermanentWorld() {
     }
   };
   const loadArea = useCallback(async (bounds: View) => {
+    const world = engine.current;
+    const epoch = world?.mutationEpoch;
     let snapshot = 0;
+    let revision: number | undefined;
     let next: number | null = 0;
     const all: Artwork[] = [];
     do {
@@ -401,14 +404,22 @@ export default function PermanentWorld() {
         height: String(bounds.height),
         after: String(next),
       });
-      const result: { elements: Artwork[]; next: number | null; snapshot: number } = await api(
-        '/elements?' + params,
-      );
+      const result: {
+        elements: Artwork[];
+        next: number | null;
+        snapshot: number;
+        revision: number;
+      } = await api('/elements?' + params);
+      if (revision !== undefined && revision !== result.revision)
+        throw new Error('Canvas changed while loading. Try again.');
+      revision = result.revision;
       all.push(...result.elements);
       snapshot = result.snapshot;
       next = result.next;
     } while (next !== null);
-    engine.current?.reconcile(all, bounds, snapshot);
+    if (world !== engine.current || epoch !== world?.mutationEpoch)
+      throw new Error('Canvas changed while loading. Try again.');
+    world?.reconcile(all, bounds, snapshot, revision);
     return all;
   }, []);
   exportRef.current = async (bounds) => {
@@ -1016,7 +1027,7 @@ export default function PermanentWorld() {
           <button
             className={panel === 'leaderboard' ? 'active' : ''}
             onClick={() => togglePanel('leaderboard')}
-            title="Weekly leaderboard"
+            title="Canvas leaderboard"
           >
             <Trophy size={17} />
             <span>Leaderboard</span>
@@ -1277,7 +1288,7 @@ export default function PermanentWorld() {
             </div>
           )}
           <div className="pw-permanent-note">
-            <Lock size={12} /> Only you can remove your published marks
+            <Lock size={12} /> Manage your own work. Moderators can hide reported content.
           </div>
         </section>
       )}
@@ -1316,7 +1327,7 @@ export default function PermanentWorld() {
           <div className="pw-permanence">
             <ShieldCheck size={17} />
             <span>
-              Your pixels. <strong>Yours forever.</strong>
+              Your pixels. <strong>Your creative space.</strong>
             </span>
           </div>
           <button className="pw-free-space" onClick={() => void findFree()}>
@@ -1542,7 +1553,7 @@ export default function PermanentWorld() {
                 </span>
                 <div>
                   <h2>{session.user.name}</h2>
-                  <span style={{ color: session.user.color }}>A permanent part of the network</span>
+                  <span>A creator in the network</span>
                 </div>
               </div>
               <div className="pw-personal-stats">
@@ -1635,7 +1646,7 @@ export default function PermanentWorld() {
                   chat.map((m) => (
                     <article key={m.id}>
                       <div>
-                        <strong style={{ color: m.color }}>{m.name}</strong>
+                        <strong>{m.name}</strong>
                         <time>
                           {new Date(m.timestamp).toLocaleTimeString([], {
                             hour: '2-digit',

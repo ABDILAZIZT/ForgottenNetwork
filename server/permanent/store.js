@@ -149,6 +149,12 @@ class CanvasStore {
       DROP TRIGGER IF EXISTS immutable_pixel_ownership_UPDATE;
       PRAGMA user_version=2;
     `);
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS canvas_revision(id INTEGER PRIMARY KEY CHECK(id=1),version INTEGER NOT NULL);
+      INSERT OR IGNORE INTO canvas_revision VALUES(1,0);
+      CREATE TRIGGER IF NOT EXISTS canvas_remove_revision AFTER INSERT ON canvas_removed BEGIN UPDATE canvas_revision SET version=version+1 WHERE id=1; END;
+      CREATE TRIGGER IF NOT EXISTS canvas_restore_revision AFTER DELETE ON canvas_removed BEGIN UPDATE canvas_revision SET version=version+1 WHERE id=1; END;
+    `);
     require('./safety').initializeSafety(this);
     if (seed && !this.db.prepare('SELECT 1 FROM canvas_elements LIMIT 1').get()) this.seed();
   }
@@ -398,6 +404,7 @@ class CanvasStore {
       )
       .all(x + width, x, y + height, y, after);
     return {
+      revision: this.db.prepare('SELECT version FROM canvas_revision WHERE id=1').get().version,
       snapshot: this.db.prepare('SELECT COALESCE(max(seq),0) AS n FROM canvas_elements').get().n,
       elements: rows.slice(0, 400).map((r) => this.row(r)),
       next: rows.length > 400 ? rows[399].seq : null,

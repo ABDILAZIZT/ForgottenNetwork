@@ -76,6 +76,7 @@ export function PolicyLinks() {
         </a>
       ))}
       <a href="/safety">Safety & privacy requests</a>
+      <a href="/THIRD_PARTY_NOTICES.txt">Third-party licenses</a>
     </nav>
   );
 }

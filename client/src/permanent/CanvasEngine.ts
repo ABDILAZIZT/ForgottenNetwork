@@ -69,6 +69,8 @@ export class PermanentEngine {
   private height = 1;
   private dpr = 1;
   private removed = new Set<string>();
+  mutationEpoch = 0;
+  private reconciledRevision = -1;
   private occupied = new Map<string, Artwork>();
   private pointers = new Map<number, Point>();
   private drawing: Point[] = [];
@@ -212,6 +214,7 @@ export class PermanentEngine {
     }
   }
   remove(ids: string[]) {
+    this.mutationEpoch++;
     ids.forEach((id) => {
       this.removed.add(id);
       this.elements.delete(id);
@@ -221,10 +224,15 @@ export class PermanentEngine {
       art.cells.forEach(([x, y]) => this.occupied.set(x + ',' + y, art));
   }
   restore(art: Artwork) {
+    this.mutationEpoch++;
     this.removed.delete(art.id);
     this.add([art]);
   }
-  reconcile(elements: Artwork[], bounds: View, snapshot: number) {
+  reconcile(elements: Artwork[], bounds: View, snapshot: number, revision = 0) {
+    if (revision < this.reconciledRevision) return;
+    this.reconciledRevision = revision;
+    // A complete, current server snapshot can recover a restore missed while offline.
+    for (const art of elements) this.removed.delete(art.id);
     const ids = new Set(elements.map((e) => e.id));
     for (const [id, e] of this.elements) {
       if (
