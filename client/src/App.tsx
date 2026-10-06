@@ -340,12 +340,8 @@ export default function App() {
     try {
       const json = await repository.exportWorld({ skipPendingWrites: !canPublish });
       const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `forgotten-network-${Date.now()}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const { download } = await import('./download');
+      download(blob, `forgotten-network-${Date.now()}.json`);
       showToast('World exported ✓');
     } catch {
       showToast('Export failed ✗');

@@ -40,6 +40,7 @@ app.use('/api', (req, res, next) =>
   req.path.startsWith('/v1/health/') || req.path === '/health' ? next() : ipLimiter(req, res, next),
 );
 app.use(express.json({ limit: '12mb' }));
+app.use('/api', require('./contentSafety').textSafetyMiddleware);
 configureAuthentication(app, { pool: databasePool });
 const permanentCanvas = createPermanentCanvas({ origins: allowedOrigins, pool: databasePool });
 app.use('/api/canvas', permanentCanvas.router);

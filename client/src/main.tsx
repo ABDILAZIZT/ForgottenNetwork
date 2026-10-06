@@ -11,6 +11,7 @@ import {
 } from './repositories';
 import './index.css';
 import './enhancements.css';
+import { isPolicyPage, PolicyPage } from './Policies';
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -34,7 +35,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <WorldRepositoryProvider repository={repository}>
       <ErrorBoundary>
-        {new URLSearchParams(location.search).get('mode') === 'classic' ? (
+        {isPolicyPage(location.pathname) ? (
+          <PolicyPage />
+        ) : new URLSearchParams(location.search).get('mode') === 'classic' ? (
           <App />
         ) : (
           <PermanentWorld />

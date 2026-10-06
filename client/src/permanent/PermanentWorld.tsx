@@ -67,6 +67,7 @@ import Expedition from '../components/Expedition';
 import { recordExploration } from '../exploration';
 import { readDraftMode, saveDraftMode, draftPreferenceKey } from './draftPreference';
 import { download } from '../download';
+import { PolicyLinks, RULES_SUMMARY, RULES_VERSION } from '../Policies';
 
 const COLORS = [
   '#a78bfa',
@@ -321,6 +322,27 @@ export default function PermanentWorld() {
       setWelcome(true);
       return;
     }
+    if (readSaved<string | null>('fn_rules:' + user.id, null) !== RULES_VERSION) {
+      if (
+        !confirm(
+          RULES_SUMMARY +
+            '\n\nImages are not automatically scanned. Read /community for full rules. Accept these rules before publishing?',
+        )
+      ) {
+        engine.current?.draftList.push(element);
+        setDrafts(engine.current?.draftList.length || 0);
+        return;
+      }
+      try {
+        localStorage.setItem('fn_rules:' + user.id, JSON.stringify(RULES_VERSION));
+      } catch {
+        /* Ask again when storage is unavailable. */
+      }
+      void api('/rules/accept', latest.current.session!.token, {
+        version: RULES_VERSION,
+        accepted: true,
+      }).catch(() => undefined);
+    }
     const next = [...queueRef.current, { actor: user.id, element }];
     try {
       localStorage.setItem('fn_canvas_pending', JSON.stringify(next));
@@ -551,6 +573,14 @@ export default function PermanentWorld() {
         ws?.send(JSON.stringify({ type: 'user:join', data: { token: session?.token } }));
       ws.onmessage = (event) => {
         const { type, data } = JSON.parse(event.data);
+        if (type === 'safety:refresh') {
+          clearArtCache();
+          void api<ChatMessage[]>('/chat')
+            .then(setChat)
+            .catch(() => undefined);
+          refreshAt.current = 0;
+          void refresh();
+        }
         if (type === 'ready') {
           ourConnection.current = data.connectionId;
           setConnected(true);
@@ -676,6 +706,19 @@ export default function PermanentWorld() {
       }
       if (e.key === '+' || e.key === '=') engine.current?.zoom(1.2);
       else if (e.key === '-') engine.current?.zoom(1 / 1.2);
+      if (
+        e.target === canvas.current &&
+        ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)
+      ) {
+        e.preventDefault();
+        const current = engine.current;
+        if (current)
+          current.fly(
+            current.camera.x + (e.key === 'ArrowRight' ? 100 : e.key === 'ArrowLeft' ? -100 : 0),
+            current.camera.y + (e.key === 'ArrowDown' ? 100 : e.key === 'ArrowUp' ? -100 : 0),
+          );
+        return;
+      }
       const tool = TOOLS.find((t) => t[3].toLowerCase() === e.key.toLowerCase());
       if (tool) {
         e.preventDefault();
@@ -931,7 +974,12 @@ export default function PermanentWorld() {
           Download prepared PNG
         </button>
       )}
-      <canvas className="pw-canvas" ref={canvas} aria-label="Permanent collaborative canvas" />
+      <canvas
+        className="pw-canvas"
+        ref={canvas}
+        tabIndex={0}
+        aria-label="Shared artwork canvas. Arrow keys pan; plus and minus zoom. Use Profile for a keyboard-accessible list of your artwork."
+      />
       <Expedition
         x={view.x + view.width / 2}
         y={view.y + view.height / 2}
@@ -1402,6 +1450,10 @@ export default function PermanentWorld() {
               Delete this artwork
             </button>
           )}
+          <a href={'/safety?type=artwork&id=' + encodeURIComponent(selected.id)}>Report artwork</a>
+          <a href={'/safety?type=profile&id=' + encodeURIComponent(selected.ownerId)}>
+            Report artist profile
+          </a>
           <div className="pw-reactions">
             {(['heart', 'fire', 'star'] as const).map((kind, i) => {
               const Icon = [Heart, Flame, Star][i];
@@ -1592,6 +1644,9 @@ export default function PermanentWorld() {
                         </time>
                       </div>
                       <p>{m.body}</p>
+                      <a href={'/safety?type=chat&id=' + encodeURIComponent(m.id)}>
+                        Report message
+                      </a>
                     </article>
                   ))
                 ) : (
@@ -1696,6 +1751,7 @@ export default function PermanentWorld() {
           )}
           {panel === 'settings' && (
             <>
+              <PolicyLinks />
               <p>
                 Clear Space removes only your published artworks fully inside the visible area. It
                 does not find free space or clear drafts.
@@ -1774,7 +1830,7 @@ export default function PermanentWorld() {
             <h1>
               YOUR MARK.
               <br />
-              <span>FOREVER.</span>
+              <span>YOUR WORLD.</span>
             </h1>
             <p>
               Some things deserve to stay.
@@ -1784,6 +1840,11 @@ export default function PermanentWorld() {
               Leave a little piece of yourself behind.
             </p>
             <div className="pw-join-form">
+              <p>
+                Use a nickname. Do not share personal information. Images are not automatically
+                checked for safety. <a href="/community">Community Rules</a> ·{' '}
+                <a href="/privacy">Privacy</a> · <a href="/safety">Safety & privacy requests</a>
+              </p>
               <label>
                 Your artist name
                 <input

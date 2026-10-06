@@ -1,0 +1,62 @@
+.policy-page {
+  max-width: 850px;
+  margin: auto;
+  padding: 32px 24px 80px;
+  color: #f1f5f9;
+  background: #101522;
+  min-height: 100vh;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.policy-page h1,
+.policy-page h2 {
+  margin: 24px 0 12px;
+}
+.policy-page p {
+  margin: 16px 0;
+}
+.policy-page a,
+.policy-links a {
+  color: #a5e7ff;
+  text-decoration: underline;
+}
+.policy-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 20px 0;
+  font-size: 14px;
+}
+.policy-page label {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+}
+.policy-page input,
+.policy-page select,
+.policy-page textarea,
+.policy-page button {
+  color: #fff;
+  background: #26334b;
+  border: 1px solid #94a3b8;
+  border-radius: 5px;
+  padding: 12px;
+  font: inherit;
+  max-width: 100%;
+}
+.policy-page button {
+  cursor: pointer;
+  margin: 8px;
+}
+.policy-page :focus-visible,
+.policy-links :focus-visible {
+  outline: 3px solid #fbbf24;
+  outline-offset: 3px;
+}
+.policy-page button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+body:has(.policy-page) {
+  overflow: auto;
+}

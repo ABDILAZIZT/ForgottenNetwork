@@ -69,6 +69,18 @@ function createPermanentCanvas({ filename, origins = [], pool } = {}) {
       e.y < peer.view.y + peer.view.height &&
       e.y + e.height > peer.view.y);
 
+  require('./safety').installSafety({
+    router,
+    get,
+    auth,
+    route,
+    limit,
+    broadcast,
+    invalidate: () => {
+      statsCache = null;
+    },
+  });
+
   router.post(
     '/classic-session',
     route(async (req, res) => {
@@ -115,7 +127,13 @@ function createPermanentCanvas({ filename, origins = [], pool } = {}) {
     '/health',
     route((_req, res) => {
       get().db.prepare('SELECT 1').get();
-      res.json({ ready: true, storage: 'sqlite', permanent: true });
+      res.json({
+        ready: true,
+        storage: 'sqlite',
+        permanent: true,
+        release: process.env.RENDER_GIT_COMMIT || null,
+        imageModeration: 'not-configured',
+      });
     }),
   );
   router.post(
@@ -261,11 +279,12 @@ function createPermanentCanvas({ filename, origins = [], pool } = {}) {
     '/assets/:id',
     route((req, res) => {
       const asset = get().asset(req.params.id);
-      if (!asset) throw fail('Image not found.', 404);
-      res
-        .set('Cache-Control', 'public,max-age=31536000,immutable')
-        .type(asset.mime)
-        .send(Buffer.from(asset.bytes));
+      if (
+        !asset ||
+        get().db.prepare('SELECT 1 FROM canvas_hidden_media WHERE asset_id=?').get(req.params.id)
+      )
+        throw fail('Image not found.', 404);
+      res.set('Cache-Control', 'no-store').type(asset.mime).send(Buffer.from(asset.bytes));
     }),
   );
   router.post(

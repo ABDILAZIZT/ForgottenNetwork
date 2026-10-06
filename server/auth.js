@@ -17,7 +17,8 @@ function promiseSessionAction(action) {
 
 function validateAuthConfiguration(environment, production) {
   if (!production) return;
-  if (environment.DISABLE_AUTH_VALIDATION === 'true' || environment.ALLOW_ANONYMOUS_AUTH === 'true') return;
+  if (environment.DISABLE_AUTH_VALIDATION === 'true' || environment.ALLOW_ANONYMOUS_AUTH === 'true')
+    return;
   const oidcFields = ['OIDC_ISSUER_URL', 'OIDC_CLIENT_ID', 'OIDC_CLIENT_SECRET'];
   const hasAnyOidc = oidcFields.some((name) => Boolean(environment[name]));
   if (!hasAnyOidc) return;
@@ -193,7 +194,7 @@ function configureAuthentication(app, { pool }) {
       const redirectUri = new URL('/api/v1/auth/callback', process.env.APP_ORIGIN).toString();
       const url = client.oidc.buildAuthorizationUrl(client.configuration, {
         redirect_uri: redirectUri,
-        scope: 'openid profile email',
+        scope: 'openid profile',
         code_challenge: challenge,
         code_challenge_method: 'S256',
         state,
@@ -220,9 +221,7 @@ function configureAuthentication(app, { pool }) {
       const claims = tokens.claims();
       if (!claims?.sub || !pool)
         throw new Error('The identity provider returned no subject or database is unavailable');
-      const displayName = String(
-        claims.name || claims.preferred_username || claims.email || 'Member',
-      ).slice(0, 60);
+      const displayName = String(claims.preferred_username || 'Member').slice(0, 60);
       const issuer = new URL(process.env.OIDC_ISSUER_URL).toString().replace(/\/$/, '');
       const result = await pool.query(
         `INSERT INTO users (id, auth_provider, auth_subject, display_name, avatar_url)

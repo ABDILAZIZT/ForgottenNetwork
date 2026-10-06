@@ -2,6 +2,7 @@ const { DatabaseSync } = require('node:sqlite');
 const { randomUUID, randomBytes, createHash } = require('node:crypto');
 const { mkdirSync } = require('node:fs');
 const path = require('node:path');
+const { assertSafeText } = require('../contentSafety');
 const CELL = 8,
   LIMIT = 1000000;
 const hash = (token) => createHash('sha256').update(token).digest('hex');
@@ -57,6 +58,7 @@ function normalizeElement(input) {
     if (typeof c.text !== 'string' || !c.text.trim() || c.text.length > 120)
       throw fail('Text must contain 1 to 120 characters.');
     content.text = c.text.trim();
+    assertSafeText(content.text);
     content.font = ['Space Grotesk', 'Orbitron', 'Inter', 'Fira Code', 'Georgia'].includes(c.font)
       ? c.font
       : 'Space Grotesk';
@@ -147,6 +149,7 @@ class CanvasStore {
       DROP TRIGGER IF EXISTS immutable_pixel_ownership_UPDATE;
       PRAGMA user_version=2;
     `);
+    require('./safety').initializeSafety(this);
     if (seed && !this.db.prepare('SELECT 1 FROM canvas_elements LIMIT 1').get()) this.seed();
   }
   transaction(work) {
@@ -161,6 +164,7 @@ class CanvasStore {
     }
   }
   register({ name, color }) {
+    assertSafeText(name);
     if (
       typeof name !== 'string' ||
       name.trim().length < 2 ||
@@ -308,7 +312,11 @@ class CanvasStore {
       const removed = this.db.prepare('SELECT * FROM canvas_removed WHERE element_id=?').get(id);
       const art = this.row(this.db.prepare('SELECT * FROM canvas_elements WHERE id=?').get(id));
       if (!removed || !art) throw fail('Removed artwork not found.', 404);
-      if (art.ownerId !== user.id || removed.actor_id !== user.id)
+      if (
+        art.ownerId !== user.id ||
+        removed.actor_id !== user.id ||
+        removed.reason !== 'owner removal'
+      )
         throw fail('Only your own removals may be restored.', 403);
       if (Date.now() - Date.parse(removed.removed_at) > 30 * 86400000)
         throw fail('Recovery window expired.', 410);
@@ -326,7 +334,7 @@ class CanvasStore {
       return art;
     });
   }
-  remove(input, user) {
+  remove(input, user, { moderator = false } = {}) {
     if (
       !input ||
       !/^[a-zA-Z0-9_-]{8,80}$/.test(input.id || '') ||
@@ -346,7 +354,8 @@ class CanvasStore {
       const arts = input.targets.map((target) => {
         const art = this.element(target.id);
         if (!art) throw fail('Artwork changed or was removed. Refresh before trying again.', 409);
-        if (art.ownerId !== user.id) throw fail('You can only remove your own artwork.', 403);
+        if (art.ownerId !== user.id && !moderator)
+          throw fail('You can only remove your own artwork.', 403);
         if (art.zIndex !== target.version)
           throw fail('Artwork version changed. Refresh first.', 409);
         return art;
@@ -356,15 +365,17 @@ class CanvasStore {
       for (const art of arts)
         this.db
           .prepare('INSERT INTO canvas_removed VALUES(?,?,?,?)')
-          .run(art.id, user.id, now, 'owner removal');
+          .run(art.id, user.id, now, moderator ? 'moderator removal' : 'owner removal');
       // Rebuild only this artist's claims from surviving history. Other identities are untouched.
-      this.db.prepare('DELETE FROM pixel_ownership WHERE owner_id=?').run(user.id);
-      const claim = this.db.prepare('INSERT OR IGNORE INTO pixel_ownership VALUES(?,?,?,?)');
-      for (const row of this.db
-        .prepare('SELECT * FROM canvas_active WHERE owner_id=? ORDER BY seq')
-        .all(user.id))
-        for (const [x, y] of JSON.parse(row.cells)) claim.run(x, y, user.id, row.id);
-      this.areas.delete(user.id);
+      for (const ownerId of new Set(arts.map((a) => a.ownerId))) {
+        this.db.prepare('DELETE FROM pixel_ownership WHERE owner_id=?').run(ownerId);
+        const claim = this.db.prepare('INSERT OR IGNORE INTO pixel_ownership VALUES(?,?,?,?)');
+        for (const row of this.db
+          .prepare('SELECT * FROM canvas_active WHERE owner_id=? ORDER BY seq')
+          .all(ownerId))
+          for (const [x, y] of JSON.parse(row.cells)) claim.run(x, y, ownerId, row.id);
+        this.areas.delete(ownerId);
+      }
       const result = { removed: arts.map((a) => a.id) };
       this.db
         .prepare('INSERT INTO canvas_mutations VALUES(?,?,?,?,?)')
@@ -537,7 +548,11 @@ class CanvasStore {
     return { id, width, height, mime, url: '/api/canvas/assets/' + id };
   }
   asset(id) {
-    return this.db.prepare('SELECT * FROM canvas_assets WHERE id=?').get(id);
+    return this.db
+      .prepare(
+        'SELECT * FROM canvas_assets WHERE id=? AND id NOT IN (SELECT asset_id FROM canvas_hidden_media)',
+      )
+      .get(id);
   }
   setAvatar(user, id) {
     const a = this.asset(id);
@@ -569,6 +584,7 @@ class CanvasStore {
       .all(user.id, user.id);
   }
   chat(user, body) {
+    assertSafeText(body);
     if (typeof body !== 'string' || !body.trim() || body.length > 280)
       throw fail('Messages must contain 1 to 280 characters.');
     const m = {
@@ -587,7 +603,7 @@ class CanvasStore {
   messages() {
     return this.db
       .prepare(
-        'SELECT id,user_id AS userId,name,color,body,created_at AS timestamp FROM canvas_chat ORDER BY created_at DESC LIMIT 60',
+        'SELECT id,user_id AS userId,name,color,body,created_at AS timestamp FROM canvas_chat WHERE id NOT IN (SELECT message_id FROM canvas_hidden_chat) ORDER BY created_at DESC LIMIT 60',
       )
       .all()
       .reverse();
