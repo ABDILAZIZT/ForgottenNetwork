@@ -213,6 +213,18 @@ function createPermanentCanvas({ filename, origins = [], pool } = {}) {
     }),
   );
   router.post(
+    '/elements/edit',
+    route((req, res) => {
+      const user = auth(req);
+      limit('edit:' + user.id, 10, 60000);
+      const result = get().replace(req.body, user);
+      statsCache = null;
+      broadcast('elements:remove', { removed: result.removed });
+      broadcast('element:place', result.element);
+      res.json(result);
+    }),
+  );
+  router.post(
     '/elements/:id/restore',
     route((req, res) => {
       const user = auth(req);

@@ -169,15 +169,57 @@ class CanvasStore {
     if (seed && !this.db.prepare('SELECT 1 FROM canvas_elements LIMIT 1').get()) this.seed();
   }
   transaction(work) {
-    this.db.exec('BEGIN IMMEDIATE');
+    const nested = this.transactionOpen;
+    const savepoint = 'sp_' + randomBytes(6).toString('hex');
+    this.db.exec(nested ? 'SAVEPOINT ' + savepoint : 'BEGIN IMMEDIATE');
+    this.transactionOpen = true;
     try {
       const result = work();
-      this.db.exec('COMMIT');
+      this.db.exec(nested ? 'RELEASE ' + savepoint : 'COMMIT');
       return result;
     } catch (error) {
-      this.db.exec('ROLLBACK');
+      this.db.exec(nested ? 'ROLLBACK TO ' + savepoint : 'ROLLBACK');
+      if (nested) this.db.exec('RELEASE ' + savepoint);
       throw error;
+    } finally {
+      this.transactionOpen = nested;
     }
+  }
+  replace(input, user) {
+    if (!input || typeof input.originalId !== 'string' || !Number.isSafeInteger(input.version))
+      throw fail('Select a versioned artwork to edit.');
+    const replacement = normalizeElement(input.element);
+    const operation = 'edit-' + replacement.id;
+    const payload = JSON.stringify({
+      originalId: input.originalId,
+      version: input.version,
+      element: replacement,
+    });
+    return this.transaction(() => {
+      const replay = this.db.prepare('SELECT * FROM canvas_mutations WHERE id=?').get(operation);
+      if (replay) {
+        if (replay.actor_id !== user.id || replay.payload !== payload)
+          throw fail('Edit ID already used.', 409);
+        if (!this.element(replacement.id))
+          throw fail('This revision was removed or superseded. Reload before editing.', 410);
+        return JSON.parse(replay.result);
+      }
+      if (this.db.prepare('SELECT 1 FROM canvas_elements WHERE id=?').get(replacement.id))
+        throw fail('Choose a new edit ID.', 409);
+      const art = this.element(input.originalId);
+      if (!art || art.zIndex !== input.version)
+        throw fail('Artwork changed or was removed. Reload before editing.', 409);
+      if (art.ownerId !== user.id) throw fail('Only the owner can edit this artwork.', 403);
+      this.remove(
+        { id: 'remove-' + replacement.id, targets: [{ id: art.id, version: art.zIndex }] },
+        user,
+      );
+      const result = { ...this.place(replacement, user), removed: [art.id] };
+      this.db
+        .prepare('INSERT INTO canvas_mutations VALUES(?,?,?,?,?)')
+        .run(operation, user.id, payload, JSON.stringify(result), new Date().toISOString());
+      return result;
+    });
   }
   register({ name, color }) {
     assertSafeText(name);
@@ -573,8 +615,8 @@ class CanvasStore {
   }
   setAvatar(user, id) {
     const a = this.asset(id);
-    if (!a || a.owner_id !== user.id || a.width > 32 || a.height > 32)
-      throw fail('Avatars must be at most 32 x 32 pixels.');
+    if (!a || a.owner_id !== user.id || a.width > 256 || a.height > 256)
+      throw fail('Avatars must be at most 256 x 256 pixels.');
     this.db.prepare('UPDATE canvas_users SET avatar_id=? WHERE id=?').run(id, user.id);
     return this.user(user.id);
   }
