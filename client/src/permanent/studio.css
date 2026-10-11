@@ -1,0 +1,122 @@
+.pw-world {
+  font-size: 14px;
+  --muted: #acb4c9;
+}
+.pw-world .pw-top-actions .pw-publish {
+  background: #c4b5fd;
+  color: #24183b;
+  font-weight: 700;
+  padding: 8px 14px;
+}
+.pw-color-controls {
+  margin: 12px 0;
+}
+.pw-color-controls summary {
+  cursor: pointer;
+  padding: 10px 0;
+}
+.pw-channel-row {
+  display: flex;
+  gap: 8px;
+}
+.pw-channel-row label {
+  min-width: 0;
+  flex: 1;
+}
+.pw-channel-row input {
+  width: 100%;
+}
+.pw-tool-options label,
+.pw-tool-options select,
+.pw-section-title,
+.pw-panel p {
+  font-size: 13px;
+}
+.pw-tool-options {
+  max-height: calc(100dvh - 190px);
+  overflow-y: auto;
+}
+.pw-world .pw-toolbar {
+  max-height: calc(100dvh - 180px);
+  overflow-y: auto;
+}
+[data-theme='light'] {
+  --bg: #eee9e1;
+  --surface: #faf7f0;
+  --surface-hi: #fffdf7;
+  --text: #332d42;
+  --text-dim: #675d73;
+  --text-bright: #21182f;
+  --accent: #315f65;
+  --border: #7d6b922f;
+}
+[data-theme='light'] .pw-world {
+  color: #30263e;
+  background: #eee9e1;
+  --muted: #655972;
+  --edge: #8c7c9940;
+  --violet: #6b46a1;
+  --cyan: #226773;
+}
+[data-theme='light'] .pw-top,
+[data-theme='light'] .pw-toolbar,
+[data-theme='light'] .pw-tool-options,
+[data-theme='light'] .pw-panel,
+[data-theme='light'] .pw-inspector,
+[data-theme='light'] .pw-bottom,
+[data-theme='light'] .pw-welcome-content,
+[data-theme='light'] .pw-welcome {
+  background: #f6f2eaf5;
+  color: #30263e;
+  border-color: #9c8aaa55;
+  box-shadow: 0 8px 30px #42305212;
+}
+[data-theme='light'] .pw-world input:not([type='color']):not([type='range']),
+[data-theme='light'] .pw-world select,
+[data-theme='light'] .pw-world textarea {
+  background: #fffdf7;
+  color: #30263e;
+  border-color: #a99bb8;
+}
+[data-theme='light'] .pw-world select option {
+  background: #fffdf7;
+  color: #30263e;
+}
+[data-theme='light'] .pw-world a,
+[data-theme='light'] .pw-muted,
+[data-theme='light'] .pw-world small,
+[data-theme='light'] .pw-world label,
+[data-theme='light'] .pw-permanent-note {
+  color: #655079;
+}
+[data-theme='light'] .pw-brand,
+[data-theme='light'] .pw-welcome h1,
+[data-theme='light'] .pw-welcome p,
+[data-theme='light'] .pw-section-title {
+  color: #30263e;
+}
+[data-theme='light'] .pw-brand-sub {
+  color: #655972;
+}
+[data-theme='light'] .policy-page {
+  color: #30263e;
+  background: #f6f2ea;
+}
+[data-theme='light'] .policy-page a,
+[data-theme='light'] .policy-links a {
+  color: #65409b;
+}
+@media (max-width: 700px) {
+  .pw-top-actions > button:first-child {
+    display: inline-flex;
+  }
+  .pw-brand > span:last-child {
+    font-size: 12px;
+  }
+  .pw-top-actions {
+    gap: 4px;
+  }
+  .pw-top-actions .pw-publish {
+    min-width: 76px;
+  }
+}

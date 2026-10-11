@@ -40,6 +40,16 @@ function normalizeElement(input) {
   if (!hex(c.color) || !n(c.opacity, 0.1, 1) || !n(c.size, 1, 64))
     throw fail('Invalid brush settings.');
   const content = { color: c.color, opacity: c.opacity, size: c.size };
+  if (c.brush !== undefined) {
+    if (!['pencil', 'marker', 'ink', 'airbrush'].includes(c.brush)) throw fail('Invalid brush.');
+    content.brush = c.brush;
+  }
+  if (['rectangle', 'ellipse'].includes(input.type)) {
+    if (c.fill !== undefined && typeof c.fill !== 'boolean') throw fail('Invalid shape fill.');
+    if (c.strokeColor !== undefined && !hex(c.strokeColor)) throw fail('Invalid stroke color.');
+    content.fill = c.fill !== false;
+    content.strokeColor = c.strokeColor || c.color;
+  }
   if (['brush', 'pixel', 'line', 'arrow'].includes(input.type)) {
     if (!Array.isArray(c.points) || !c.points.length || c.points.length > 1500)
       throw fail('Draw several shorter strokes.');

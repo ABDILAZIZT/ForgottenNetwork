@@ -63,10 +63,12 @@ import type {
 } from './types';
 import { useModal } from '../components/useModal';
 import './world.css';
+import './studio.css';
 import Expedition from '../components/Expedition';
 import { recordExploration } from '../exploration';
 import { readDraftMode, saveDraftMode, draftPreferenceKey } from './draftPreference';
 import { download } from '../download';
+import ColorControls from './ColorControls';
 import { PolicyLinks, RULES_SUMMARY, RULES_VERSION } from '../Policies';
 
 const COLORS = [
@@ -117,6 +119,13 @@ const initialSettings: Settings = {
   draftMode: true,
   enabled: false,
   reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+  brush: 'ink',
+  fill: true,
+  smoothing: 0,
+  grid: true,
+  snap: false,
+  rulers: false,
+  theme: document.documentElement.dataset.theme === 'light' ? 'light' : 'dark',
 };
 type Session = { token: string; user: Identity };
 type Pending = { actor: string; element: Placement };
@@ -146,6 +155,14 @@ export default function PermanentWorld() {
   const [stats, setStats] = useState<Stats | null>(null),
     [profile, setProfile] = useState<Profile | null>(null),
     [peers, setPeers] = useState<Peer[]>([]);
+  useEffect(() => {
+    document.documentElement.dataset.theme = settings.theme || 'dark';
+    try {
+      localStorage.setItem('fn_studio_theme', settings.theme || 'dark');
+    } catch {
+      /* Current session still changes theme. */
+    }
+  }, [settings.theme]);
   const [view, setView] = useState<View>({
     x: -800,
     y: -500,
@@ -1024,6 +1041,25 @@ export default function PermanentWorld() {
           <span className="pw-drawing-count">{peers.filter((p) => p.drawing).length} drawing</span>
         </div>
         <div className="pw-top-actions">
+          {session && (
+            <button
+              className="pw-publish"
+              disabled={!drafts || busy || pendingCount > 0}
+              onClick={() => engine.current?.publishDrafts()}
+            >
+              <Check size={17} />
+              Publish {drafts > 0 ? `(${drafts})` : ''}
+            </button>
+          )}
+          <button
+            aria-label="Toggle color theme"
+            title="Toggle color theme"
+            onClick={() =>
+              setSettings((s) => ({ ...s, theme: s.theme === 'light' ? 'dark' : 'light' }))
+            }
+          >
+            {settings.theme === 'light' ? '☾' : '☀'}
+          </button>
           <button
             className={panel === 'leaderboard' ? 'active' : ''}
             onClick={() => togglePanel('leaderboard')}
@@ -1106,7 +1142,7 @@ export default function PermanentWorld() {
           {expanded && <span>Tool settings</span>}
         </button>
       </nav>
-      {!welcome && options && !['pan', 'export'].includes(settings.tool) && (
+      {!welcome && options && (
         <section
           className={'pw-tool-options ' + (expanded ? 'offset' : '')}
           aria-label="Tool settings panel"
@@ -1129,19 +1165,74 @@ export default function PermanentWorld() {
             </p>
           ) : (
             <>
-              {['brush', 'pixel', 'line', 'arrow', 'text'].includes(settings.tool) && (
+              {['brush', 'pixel', 'line', 'arrow', 'text', 'rectangle', 'ellipse'].includes(
+                settings.tool,
+              ) && (
                 <label>
-                  Size <b>{settings.tool === 'pixel' ? 1 : settings.size}px</b>
+                  Size / stroke <b>{settings.size}px</b>
                   <input
                     aria-label="Brush size"
                     type="range"
                     min={1}
                     max={64}
-                    disabled={settings.tool === 'pixel'}
-                    value={settings.tool === 'pixel' ? 1 : settings.size}
+                    value={settings.size}
                     onChange={(e) => setSettings((s) => ({ ...s, size: Number(e.target.value) }))}
                   />
                 </label>
+              )}
+              {settings.tool === 'brush' && (
+                <>
+                  <label>
+                    Brush
+                    <select
+                      value={settings.brush || 'ink'}
+                      onChange={(e) =>
+                        setSettings((s) => ({ ...s, brush: e.target.value as Settings['brush'] }))
+                      }
+                    >
+                      {['pencil', 'marker', 'ink', 'airbrush'].map((b) => (
+                        <option key={b}>{b}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Smoothing
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      value={settings.smoothing || 0}
+                      onChange={(e) =>
+                        setSettings((s) => ({ ...s, smoothing: Number(e.target.value) }))
+                      }
+                    />
+                  </label>
+                </>
+              )}
+              {['rectangle', 'ellipse'].includes(settings.tool) && (
+                <>
+                  <label>
+                    Shape style
+                    <select
+                      value={settings.fill === false ? 'outline' : 'filled'}
+                      onChange={(e) =>
+                        setSettings((s) => ({ ...s, fill: e.target.value === 'filled' }))
+                      }
+                    >
+                      <option value="filled">Filled</option>
+                      <option value="outline">Outline</option>
+                    </select>
+                  </label>
+                  <label>
+                    Stroke color
+                    <input
+                      type="color"
+                      value={settings.strokeColor || settings.color}
+                      onChange={(e) => setSettings((s) => ({ ...s, strokeColor: e.target.value }))}
+                    />
+                  </label>
+                </>
               )}
               <label>
                 Opacity <b>{Math.round(settings.opacity * 100)}%</b>
@@ -1245,6 +1336,7 @@ export default function PermanentWorld() {
                 <span>{settings.color.toUpperCase()}</span>
                 <Palette size={16} />
               </div>
+              <ColorControls value={settings.color} onChange={chooseColor} />
               {!!recent.length && (
                 <div className="pw-recent">
                   {recent.map((color) => (
@@ -1281,10 +1373,7 @@ export default function PermanentWorld() {
               <button title="Undo draft" onClick={() => engine.current?.undoDraft()}>
                 <Undo2 size={16} />
               </button>
-              <button onClick={() => engine.current?.publishDrafts()}>
-                <Check size={16} />
-                Publish {drafts} drafts
-              </button>
+              <span>{drafts} drafts · Publish in the header</span>
             </div>
           )}
           <div className="pw-permanent-note">
@@ -1762,6 +1851,28 @@ export default function PermanentWorld() {
           )}
           {panel === 'settings' && (
             <>
+              <button
+                className="pw-wide-button"
+                onClick={() =>
+                  setSettings((s) => ({ ...s, theme: s.theme === 'light' ? 'dark' : 'light' }))
+                }
+              >
+                Switch to {settings.theme === 'light' ? 'dark' : 'light'} mode
+              </button>
+              {(['grid', 'snap', 'rulers'] as const).map((key) => (
+                <label className="pw-check" key={key}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(settings[key])}
+                    onChange={(e) => setSettings((s) => ({ ...s, [key]: e.target.checked }))}
+                  />
+                  {key === 'snap'
+                    ? 'Snap to 8px grid'
+                    : key === 'rulers'
+                      ? 'Coordinate rulers'
+                      : 'Show grid'}
+                </label>
+              ))}
               <PolicyLinks />
               <p>
                 Clear Space removes only your published artworks fully inside the visible area. It

@@ -17,6 +17,9 @@ export interface Content {
   color: string;
   opacity: number;
   size: number;
+  brush?: 'pencil' | 'marker' | 'ink' | 'airbrush';
+  fill?: boolean;
+  strokeColor?: string;
   points?: Point[];
   text?: string;
   font?: string;

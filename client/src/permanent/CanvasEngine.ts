@@ -19,6 +19,14 @@ export interface Settings {
   draftMode: boolean;
   enabled: boolean;
   reducedMotion: boolean;
+  brush?: Content['brush'];
+  fill?: boolean;
+  strokeColor?: string;
+  smoothing?: number;
+  grid?: boolean;
+  snap?: boolean;
+  rulers?: boolean;
+  theme?: 'light' | 'dark';
 }
 interface Hooks {
   commit: (element: Placement) => void;
@@ -278,7 +286,8 @@ export class PermanentEngine {
   }
   private world(x: number, y: number): Point {
     const p = this.camera.screenToWorld(x, y, this.width, this.height);
-    return [Math.round(p.x), Math.round(p.y)];
+    const step = this.settings.snap ? 8 : 1;
+    return [Math.round(p.x / step) * step, Math.round(p.y / step) * step];
   }
   private make(points: Point[]): Placement | null {
     const s = this.settings,
@@ -306,9 +315,14 @@ export class PermanentEngine {
       last = points[points.length - 1],
       content: Content = {
         color: s.color,
-        size: type === 'pixel' ? 1 : s.size,
+        size: s.size,
         opacity: s.opacity,
       };
+    if (type === 'brush') content.brush = s.brush || 'ink';
+    if (type === 'rectangle' || type === 'ellipse') {
+      content.fill = s.fill !== false;
+      content.strokeColor = s.strokeColor || s.color;
+    }
     let x = Math.min(...points.map((p) => p[0])),
       y = Math.min(...points.map((p) => p[1])),
       width = Math.max(...points.map((p) => p[0])) - x,
@@ -455,7 +469,7 @@ export class PermanentEngine {
         if (Math.hypot(point[0] - last[0], point[1] - last[1]) >= 1) {
           const xs = this.drawing.map((p) => p[0]),
             ys = this.drawing.map((p) => p[1]);
-          const span = 508 - (this.settings.tool === 'pixel' ? 1 : this.settings.size);
+          const span = 508 - this.settings.size;
           if (
             this.drawing.length >= 1200 ||
             Math.max(...xs, point[0]) - Math.min(...xs, point[0]) > span ||
@@ -464,7 +478,14 @@ export class PermanentEngine {
             this.finish();
             this.start = point;
             this.drawing = [point];
-          } else this.drawing.push(point);
+          } else {
+            const blend =
+              this.settings.tool === 'brush' ? 1 - (this.settings.smoothing || 0) * 0.85 : 1;
+            this.drawing.push([
+              last[0] + (point[0] - last[0]) * blend,
+              last[1] + (point[1] - last[1]) * blend,
+            ]);
+          }
         }
       } else this.drawing = [this.start, point];
       this.preview = this.make(this.drawing);
@@ -516,7 +537,7 @@ export class PermanentEngine {
       this.camera.teleportTo(-180 + Math.sin(t * 0.05) * 35, Math.cos(t * 0.04) * 20);
     if (this.camera.zoom < Math.max(w, h) / 7168) this.camera.setZoom(Math.max(w, h) / 7168);
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    ctx.fillStyle = '#0a0a0f';
+    ctx.fillStyle = this.settings.theme === 'light' ? '#eee9e1' : '#11121d';
     ctx.fillRect(0, 0, w, h);
     for (let i = 0; i < 95; i++) {
       const x = (((i * 173.71 - this.camera.x * 0.08) % w) + w) % w,
@@ -529,7 +550,12 @@ export class PermanentEngine {
     ctx.scale(this.camera.zoom, this.camera.zoom);
     ctx.translate(-this.camera.x, -this.camera.y);
     const v = this.getView();
-    ctx.strokeStyle = '#ffffff07';
+    ctx.strokeStyle =
+      this.settings.grid === false
+        ? 'transparent'
+        : this.settings.theme === 'light'
+          ? '#40325318'
+          : '#ffffff0d';
     ctx.lineWidth = 1 / this.camera.zoom;
     ctx.beginPath();
     for (let x = Math.floor(v.x / 64) * 64; x < v.x + v.width; x += 64) {
@@ -541,6 +567,15 @@ export class PermanentEngine {
       ctx.lineTo(v.x + v.width, y);
     }
     ctx.stroke();
+    if (this.settings.rulers) {
+      ctx.fillStyle = this.settings.theme === 'light' ? '#594873' : '#c4b5df';
+      ctx.font = `${12 / this.camera.zoom}px system-ui`;
+      const interval = Math.max(64, 64 * Math.ceil(1 / this.camera.zoom));
+      for (let x = Math.ceil(v.x / interval) * interval; x < v.x + v.width; x += interval)
+        ctx.fillText(String(x), x, v.y + 100 / this.camera.zoom);
+      for (let y = Math.ceil(v.y / interval) * interval; y < v.y + v.height; y += interval)
+        ctx.fillText(String(y), v.x + 85 / this.camera.zoom, y);
+    }
     if (this.highlightChallenge && this.challenge) {
       const c = this.challenge;
       ctx.fillStyle = '#10b98116';
@@ -579,9 +614,6 @@ export class PermanentEngine {
       ctx.save();
       ctx.globalAlpha = 0.7;
       drawArt(ctx, e, t);
-      ctx.strokeStyle = '#fbbf24';
-      ctx.setLineDash([3, 5]);
-      ctx.strokeRect(e.x, e.y, e.width, e.height);
       ctx.restore();
     }
     if (this.preview) {
@@ -589,11 +621,6 @@ export class PermanentEngine {
       ctx.globalAlpha = 0.7;
       drawArt(ctx, this.preview, t);
       ctx.restore();
-      ctx.strokeStyle = '#a78bfa';
-      ctx.lineWidth = 1 / this.camera.zoom;
-      ctx.setLineDash([4, 4]);
-      ctx.strokeRect(this.preview.x, this.preview.y, this.preview.width, this.preview.height);
-      ctx.setLineDash([]);
       if (this.previewCellId !== this.preview.id) {
         this.previewCellId = this.preview.id;
         this.previewCells = placementCells(this.preview);

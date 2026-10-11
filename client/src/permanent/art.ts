@@ -168,13 +168,19 @@ function raw(ctx: CanvasRenderingContext2D, e: Placement, t: number) {
       );
       for (let step = 0; step <= steps; step++)
         ctx.fillRect(
-          Math.floor(previous[0] + ((point[0] - previous[0]) * step) / steps) - e.x,
-          Math.floor(previous[1] + ((point[1] - previous[1]) * step) / steps) - e.y,
-          1,
-          1,
+          Math.floor(previous[0] + ((point[0] - previous[0]) * step) / steps - c.size / 2) - e.x,
+          Math.floor(previous[1] + ((point[1] - previous[1]) * step) / steps - c.size / 2) - e.y,
+          c.size,
+          c.size,
         );
     });
   } else if (['brush', 'line', 'arrow'].includes(e.type)) {
+    if (c.brush === 'pencil') ctx.globalAlpha *= 0.55;
+    if (c.brush === 'marker') {
+      ctx.globalAlpha *= 0.7;
+      ctx.lineCap = 'square';
+    }
+    if (c.brush === 'airbrush') ctx.filter = `blur(${Math.max(0.5, c.size / 8)}px)`;
     const pts = c.points || [];
     ctx.beginPath();
     pts.forEach(([x, y], i) => {
@@ -205,11 +211,32 @@ function raw(ctx: CanvasRenderingContext2D, e: Placement, t: number) {
       );
       ctx.stroke();
     }
-  } else if (e.type === 'rectangle') ctx.fillRect(0, 0, e.width, e.height);
-  else if (e.type === 'ellipse') {
+  } else if (e.type === 'rectangle') {
+    if (c.fill !== false) ctx.fillRect(0, 0, e.width, e.height);
+    else {
+      const line = Math.min(c.size, e.width, e.height);
+      ctx.lineWidth = line;
+      ctx.strokeStyle = c.strokeColor || c.color;
+      ctx.strokeRect(line / 2, line / 2, e.width - line, e.height - line);
+    }
+  } else if (e.type === 'ellipse') {
     ctx.beginPath();
-    ctx.ellipse(e.width / 2, e.height / 2, e.width / 2, e.height / 2, 0, 0, Math.PI * 2);
-    ctx.fill();
+    const line = c.fill === false ? Math.min(c.size, e.width, e.height) : 0;
+    ctx.ellipse(
+      e.width / 2,
+      e.height / 2,
+      Math.max(0.1, (e.width - line) / 2),
+      Math.max(0.1, (e.height - line) / 2),
+      0,
+      0,
+      Math.PI * 2,
+    );
+    if (c.fill !== false) ctx.fill();
+    else {
+      ctx.lineWidth = line;
+      ctx.strokeStyle = c.strokeColor || c.color;
+      ctx.stroke();
+    }
   } else if (e.type === 'text') {
     const lines = (c.text || '').split('\n');
     ctx.textBaseline = 'top';
