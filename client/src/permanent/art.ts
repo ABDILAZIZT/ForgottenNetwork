@@ -252,6 +252,16 @@ function raw(ctx: CanvasRenderingContext2D, e: Placement, t: number) {
     }
     sticker(ctx, c.sticker || 'star', e.width, e.height, c.color, c.animated ? t : 0);
   } else if (c.assetId) {
+    if (c.rotation) {
+      const angle = (c.rotation * Math.PI) / 180;
+      const rw = Math.abs(e.width * Math.cos(angle)) + Math.abs(e.height * Math.sin(angle));
+      const rh = Math.abs(e.width * Math.sin(angle)) + Math.abs(e.height * Math.cos(angle));
+      const fit = Math.min(e.width / rw, e.height / rh);
+      ctx.translate(e.width / 2, e.height / 2);
+      ctx.rotate(angle);
+      ctx.scale(fit, fit);
+      ctx.translate(-e.width / 2, -e.height / 2);
+    }
     const animation = frames.get(c.assetId),
       img = images.get(c.assetId);
     if (animation?.length) {

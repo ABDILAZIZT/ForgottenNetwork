@@ -41,11 +41,14 @@ import {
   VolumeX,
   X,
   Eraser,
+  Pipette,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { PermanentEngine, type Settings } from './CanvasEngine';
 import { api, ApiError, fileData, readSaved } from './api';
-import { clearArtCache, sticker as drawSticker } from './art';
+import { clearArtCache, sticker as drawSticker, loadArt, drawArt } from './art';
+import RasterStudio from './RasterStudio';
+import StudioUtilities from './StudioUtilities';
 import { placementCells } from './geometry';
 import type {
   Artwork,
@@ -99,6 +102,7 @@ const TOOLS: Array<[Tool, LucideIcon, string, string]> = [
   ['stamp', UserRound, 'Avatar stamp', 'M'],
   ['eraser', Eraser, 'Erase my artwork', 'E'],
   ['export', ArrowDownToLine, 'Export area', 'D'],
+  ['eyedropper', Pipette, 'Eyedropper', 'O'],
 ];
 const STICKERS = ['planet', 'heart', 'flower', 'bolt', 'star', 'orbit', 'spark', 'peace'];
 const FONTS = ['Space Grotesk', 'Orbitron', 'Inter', 'Fira Code', 'Georgia'];
@@ -131,6 +135,19 @@ type Session = { token: string; user: Identity };
 type Pending = { actor: string; element: Placement };
 
 export default function PermanentWorld() {
+  const [utilitiesOpen, setUtilitiesOpen] = useState(false);
+  const editorUpload = useRef<{ key: string; asset: Asset; id: string } | null>(null);
+  const [editor, setEditor] = useState<{
+    source?: string;
+    original?: Artwork;
+    avatar?: boolean;
+  } | null>(null);
+  useEffect(
+    () => () => {
+      if (editor?.source?.startsWith('blob:')) URL.revokeObjectURL(editor.source);
+    },
+    [editor],
+  );
   const canvas = useRef<HTMLCanvasElement>(null),
     engine = useRef<PermanentEngine | null>(null),
     socket = useRef<WebSocket | null>(null);
@@ -225,7 +242,7 @@ export default function PermanentWorld() {
     clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(''), 4500);
   }, []);
-  const welcomeRef = useModal(welcome, () => {
+  const welcomeRef = useModal(welcome && !editor, () => {
     setWelcome(false);
     setExploring(true);
   });
@@ -460,6 +477,9 @@ export default function PermanentWorld() {
   useEffect(() => {
     if (!canvas.current) return;
     const world = new PermanentEngine(canvas.current, {
+      sample: (color) => {
+        setSettings((s) => ({ ...s, color, tool: 'brush' }));
+      },
       commit: (e) => commitRef.current(e),
       view: setView,
       hover: (art, x, y) => setHover(art ? { art, x, y } : null),
@@ -796,8 +816,21 @@ export default function PermanentWorld() {
     if (avatarUpload) {
       const bitmap = await createImageBitmap(file);
       const tile = document.createElement('canvas');
-      tile.width = tile.height = 32;
-      tile.getContext('2d')!.drawImage(bitmap, 0, 0, 32, 32);
+      tile.width = tile.height = 256;
+      const side = Math.min(bitmap.width, bitmap.height);
+      tile
+        .getContext('2d')!
+        .drawImage(
+          bitmap,
+          (bitmap.width - side) / 2,
+          (bitmap.height - side) / 2,
+          side,
+          side,
+          0,
+          0,
+          256,
+          256,
+        );
       bitmap.close();
       data = await new Promise<Blob>((resolve, reject) =>
         tile.toBlob(
@@ -812,6 +845,10 @@ export default function PermanentWorld() {
     if (!file) return;
     if (!session) {
       setWelcome(true);
+      return;
+    }
+    if (file.type !== 'image/gif') {
+      setEditor({ source: URL.createObjectURL(file) });
       return;
     }
     setBusy(true);
@@ -864,7 +901,7 @@ export default function PermanentWorld() {
     }
   };
   const selectTool = (tool: Tool) => {
-    if (!session && !['pan', 'export'].includes(tool)) {
+    if (!session && !['pan', 'export', 'eyedropper'].includes(tool)) {
       setWelcome(true);
       return;
     }
@@ -984,6 +1021,78 @@ export default function PermanentWorld() {
   );
   const togglePanel = (next: typeof panel) =>
     setPanel((current) => (current === next ? null : next));
+  const saveEditor = async (
+    blob: Blob,
+    position?: { x: number; y: number; width: number; height: number },
+  ) => {
+    if (!editor) return;
+    const file = new File([blob], editor.avatar ? 'avatar.png' : 'studio.png', {
+      type: 'image/png',
+    });
+    if (editor.avatar && !session) {
+      setAvatar(file);
+      setEditor(null);
+      return;
+    }
+    if (!session) throw new Error('Sign in before saving artwork.');
+    const hash = Array.from(
+      new Uint8Array(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer())),
+    )
+      .map((n) => n.toString(16).padStart(2, '0'))
+      .join('');
+    const key = JSON.stringify([
+      session.user.id,
+      editor.original?.id,
+      editor.avatar,
+      position,
+      hash,
+    ]);
+    if (editorUpload.current?.key !== key)
+      editorUpload.current = {
+        key,
+        asset: await upload(file, Boolean(editor.avatar)),
+        id: crypto.randomUUID(),
+      };
+    const { asset, id } = editorUpload.current;
+    if (editor.avatar) {
+      const user = await api<Identity>('/avatar', session.token, { assetId: asset.id });
+      const next = { ...session, user };
+      setSession(next);
+      localStorage.setItem('fn_canvas_identity', JSON.stringify(next));
+    } else {
+      const old = editor.original;
+      const dimension = old ? Math.max(old.width, old.height) : 256;
+      const element: Placement = {
+        id,
+        type: 'image',
+        x: position?.x ?? old?.x ?? Math.round(view.x + view.width / 2 - dimension / 2),
+        y: position?.y ?? old?.y ?? Math.round(view.y + view.height / 2 - dimension / 2),
+        width: position?.width ?? old?.width ?? dimension,
+        height: position?.height ?? old?.height ?? dimension,
+        content: { color: '#ffffff', size: 1, opacity: 1, assetId: asset.id },
+      };
+      if (old) {
+        const result = await api<{ element: Artwork; removed: string[] }>(
+          '/elements/edit',
+          session.token,
+          { originalId: old.id, version: old.zIndex, element },
+        );
+        engine.current?.remove(result.removed);
+        engine.current?.add([result.element]);
+        setSelected(result.element);
+        void refresh();
+      } else engine.current?.stage(element);
+    }
+    editorUpload.current = null;
+    setEditor(null);
+    toastMessage(
+      editor.original
+        ? 'Artwork revision saved. Previous version remains recoverable.'
+        : editor.avatar
+          ? 'Avatar updated.'
+          : 'Artwork added as an unpublished draft.',
+    );
+  };
   return (
     <main
       className="pw-world"
@@ -994,6 +1103,35 @@ export default function PermanentWorld() {
         void uploadMedia(e.dataTransfer.files[0]);
       }}
     >
+      <StudioUtilities
+        open={utilitiesOpen}
+        onClose={() => setUtilitiesOpen(false)}
+        token={session?.token}
+        engine={engine.current}
+        onMedia={(file) => void uploadMedia(file)}
+        onNotice={toastMessage}
+      />
+      {editor && (
+        <RasterStudio
+          source={editor.source}
+          placement={
+            editor.avatar
+              ? undefined
+              : editor.original || {
+                  x: Math.round(view.x + view.width / 2 - 128),
+                  y: Math.round(view.y + view.height / 2 - 128),
+                  width: 256,
+                  height: 256,
+                }
+          }
+          avatar={editor.avatar}
+          label={
+            editor.avatar ? 'Use avatar' : editor.original ? 'Publish revision' : 'Save as draft'
+          }
+          onClose={() => setEditor(null)}
+          onSave={saveEditor}
+        />
+      )}
       {exportFile && (
         <button
           className="pw-export-download"
@@ -1041,6 +1179,21 @@ export default function PermanentWorld() {
           <span className="pw-drawing-count">{peers.filter((p) => p.drawing).length} drawing</span>
         </div>
         <div className="pw-top-actions">
+          <button
+            title="Tools & saved worlds"
+            aria-label="Tools & saved worlds"
+            onClick={() => setUtilitiesOpen(true)}
+          >
+            Tools
+          </button>
+          {session && (
+            <button
+              title="Artwork studio: fill, select, transform and layers"
+              onClick={() => setEditor({})}
+            >
+              Studio
+            </button>
+          )}
           {session && (
             <button
               className="pw-publish"
@@ -1266,19 +1419,37 @@ export default function PermanentWorld() {
                 </>
               )}
               {['image', 'stamp', 'sticker'].includes(settings.tool) && (
-                <label>
-                  Width <b>{settings.mediaWidth}px</b>
-                  <input
-                    aria-label="Placement width"
-                    type="range"
-                    min={16}
-                    max={Math.min(512, 512 / settings.mediaRatio)}
-                    value={settings.mediaWidth}
-                    onChange={(e) =>
-                      setSettings((s) => ({ ...s, mediaWidth: Number(e.target.value) }))
-                    }
-                  />
-                </label>
+                <>
+                  <label>
+                    Width <b>{settings.mediaWidth}px</b>
+                    <input
+                      aria-label="Placement width"
+                      type="range"
+                      min={16}
+                      max={Math.min(512, 512 / settings.mediaRatio)}
+                      value={settings.mediaWidth}
+                      onChange={(e) =>
+                        setSettings((s) => ({ ...s, mediaWidth: Number(e.target.value) }))
+                      }
+                    />
+                  </label>
+                  {settings.tool !== 'sticker' && (
+                    <label>
+                      Image rotation <b>{settings.rotation || 0}°</b>
+                      <input
+                        aria-label="Image rotation"
+                        type="range"
+                        min={-180}
+                        max={180}
+                        value={settings.rotation || 0}
+                        onChange={(e) =>
+                          setSettings((s) => ({ ...s, rotation: Number(e.target.value) }))
+                        }
+                      />
+                      <small>Aspect ratio is preserved inside the placement frame.</small>
+                    </label>
+                  )}
+                </>
               )}
               {settings.tool === 'sticker' && (
                 <>
@@ -1546,9 +1717,32 @@ export default function PermanentWorld() {
             </div>
           </dl>
           {selected.ownerId === session?.user.id && (
-            <button className="pw-wide-button" onClick={() => removeRef.current([selected])}>
-              Delete this artwork
-            </button>
+            <>
+              <button
+                className="pw-wide-button"
+                onClick={() => {
+                  void (async () => {
+                    try {
+                      await loadArt(selected);
+                      const tile = document.createElement('canvas');
+                      tile.width = selected.width;
+                      tile.height = selected.height;
+                      const ctx = tile.getContext('2d')!;
+                      ctx.translate(-selected.x, -selected.y);
+                      drawArt(ctx, selected);
+                      setEditor({ source: tile.toDataURL('image/png'), original: selected });
+                    } catch (error) {
+                      toastMessage((error as Error).message);
+                    }
+                  })();
+                }}
+              >
+                Edit / transform artwork{selected.content.animated ? ' (still frame)' : ''}
+              </button>
+              <button className="pw-wide-button" onClick={() => removeRef.current([selected])}>
+                Delete this artwork
+              </button>
+            </>
           )}
           <a href={'/safety?type=artwork&id=' + encodeURIComponent(selected.id)}>Report artwork</a>
           <a href={'/safety?type=profile&id=' + encodeURIComponent(selected.ownerId)}>
@@ -1693,18 +1887,10 @@ export default function PermanentWorld() {
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
                   hidden
-                  onChange={async (e) => {
+                  onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
-                    try {
-                      const a = await upload(file, true);
-                      const user = await api<Identity>('/avatar', session.token, { assetId: a.id });
-                      const next = { ...session, user };
-                      setSession(next);
-                      localStorage.setItem('fn_canvas_identity', JSON.stringify(next));
-                    } catch (error) {
-                      toastMessage((error as Error).message);
-                    }
+                    setEditor({ source: URL.createObjectURL(file), avatar: true });
                   }}
                 />
               </label>
@@ -1723,9 +1909,9 @@ export default function PermanentWorld() {
               <p className="pw-muted">
                 Keep your key private. It restores access to your identity on another device.
               </p>
-              <a className="pw-classic" href="/?mode=classic">
-                Open Classic Studio <ArrowUpRight size={13} />
-              </a>
+              <p className="pw-muted">
+                Earlier saved worlds are available in Tools & saved worlds.
+              </p>
             </>
           )}
           {panel === 'chat' && (
@@ -1928,9 +2114,7 @@ export default function PermanentWorld() {
                 <ArrowDownToLine size={16} />
                 Export visible canvas
               </button>
-              <a className="pw-classic" href="/?mode=classic">
-                Classic Studio <ArrowUpRight size={13} />
-              </a>
+              <p className="pw-muted">All drawing tools now live in this studio.</p>
             </>
           )}
         </aside>
@@ -2000,7 +2184,10 @@ export default function PermanentWorld() {
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
                     hidden
-                    onChange={(e) => setAvatar(e.target.files?.[0] || null)}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) setEditor({ source: URL.createObjectURL(file), avatar: true });
+                    }}
                   />
                 </label>
               </div>

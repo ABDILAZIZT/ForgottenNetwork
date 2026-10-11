@@ -1,11 +1,11 @@
 # Permanent Canvas
 
-The default route is the permanent shared canvas. `/?mode=classic` preserves the previous editable world, its browser data, and PostgreSQL integration. No old artwork is migrated, erased, or silently made immutable.
+The default route is the shared canvas. The former `/?mode=classic` entry now opens this same studio. Tools & saved worlds preserves access to the previous IndexedDB/PostgreSQL format, authentication, exports/imports, tile revisions, media records, reports and demo rewards. No old artwork is automatically migrated, erased, or published onto the shared canvas. See [studio migration](STUDIO_MIGRATION.md).
 
 ## Included
 
-- Passwordless artist identity with signature color, optional 32px avatar, and a downloadable private recovery key. Names are labels, not verified identities. Only a hash of the secret key is stored on the server.
-- Brush, crisp pixel pen, four shape tools, five text fonts, validated images, looping GIFs, eight canvas-native stickers, avatar stamps, draft-only erasing, and PNG area export.
+- Passwordless artist identity with signature color, optional cropped 256px avatar, and a downloadable private recovery key. Existing low-resolution avatars remain unchanged until their owners upload a replacement. Names are labels, not verified identities. Only a hash of the secret key is stored on the server.
+- Four brush styles, resizable pixel pen, filled/outline shapes, text, validated images, looping GIFs, stickers, avatar stamps, owner-authorized artwork erasing, and PNG area export. The local raster studio adds tolerance fill, marquee/lasso, transformations, filters and up to eight layers, flattened on save.
 - Smooth pan/zoom, touch pinch, density minimap, free-space finder, author inspector, jump-to-own-art, and optional audio/reduced motion.
 - Live cursors, in-progress drawing previews, accepted art, chat, reactions, notifications, weekly rankings, UTC visit streaks, achievements, daily challenge XP, and a most-appreciated spotlight.
 - A seeded collection explicitly attributed to Forgotten Studio. All artist/artwork/area counts are computed from saved records, not invented activity numbers.
@@ -26,7 +26,7 @@ Before an automatic placement is sent, it is saved in a local, identity-bound re
 
 Use Node 22.13+ (tested with Node 24), then `pnpm install` and `pnpm start`. The new API is `/api/canvas`; WebSockets upgrade at `/api/canvas/live`. Vite proxies both to port 3001. `CORS_ORIGIN` must include the actual browser origin, including its scheme and port.
 
-The database defaults to `server/data/permanent.sqlite`. Set `PERMANENT_DB_PATH` to a persistent volume on a server. The Render blueprint includes `/var/data` for this purpose; it does not provision anything until you deploy it. Review disk and plan costs first. Classic Studio still uses the separately configured PostgreSQL database.
+The database defaults to `server/data/permanent.sqlite`. Set `PERMANENT_DB_PATH` to a persistent volume on a server. The checked-in Render blueprint does not provision a persistent SQLite disk. The operator must verify the actual service volume and backups before relying on durability across redeploys. Saved-world data uses the separately configured PostgreSQL database or browser IndexedDB.
 
 This deployment is **one Node process on one persistent SQLite volume**. Do not run independent replicas with separate disks: they would create separate worlds. Larger deployment requires a shared transactional ownership store, cross-process pub/sub, media caching, and workload-specific load tests. Redis and a distributed backend are not configured here.
 

@@ -76,6 +76,10 @@ function normalizeElement(input) {
   if (['image', 'stamp'].includes(input.type)) {
     if (typeof c.assetId !== 'string') throw fail('Upload an image first.');
     content.assetId = c.assetId;
+    if (c.rotation !== undefined) {
+      if (!n(c.rotation, -360, 360)) throw fail('Invalid image rotation.');
+      content.rotation = c.rotation;
+    }
   }
   if (input.type === 'sticker') {
     if (

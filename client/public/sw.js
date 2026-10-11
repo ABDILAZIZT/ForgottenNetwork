@@ -1,6 +1,6 @@
 /* Offline shell only. Never cache API responses, credentials, or user uploads. */
-const CACHE = 'forgotten-shell-v1';
-const SHELL = ['/', '/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png'];
+const CACHE = 'forgotten-shell-v2';
+const SHELL = ['/', '/theme.js', '/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png'];
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE).then(async (cache) => {

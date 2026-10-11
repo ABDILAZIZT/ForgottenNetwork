@@ -1,6 +1,6 @@
 # Forgotten Network / Cyber Terrarium
 
-Forgotten Network is a collaborative canvas built with React, TypeScript, Canvas 2D, native WebSockets, and an append-only SQLite ownership store. The default experience is the permanent shared canvas; the previous three-layer world is preserved at `/?mode=classic`.
+Forgotten Network is a collaborative canvas built with React, TypeScript, Canvas 2D, native WebSockets, and an append-only SQLite ownership store with recoverable owner revisions. One studio now serves all entry links. Previous three-layer worlds remain accessible through **Tools & saved worlds**, without automatic migration or publication.
 
 > The permanent canvas is implemented for local use. Public deployment still requires durable storage, off-machine backups, abuse controls, and realistic load testing. Read [the permanent canvas guide](docs/PERMANENT_CANVAS.md) before deployment. The older [launch readiness](docs/LAUNCH_READINESS.md) applies to Classic Studio.
 
@@ -72,7 +72,7 @@ Classic Studio remote mode connects the repository to versioned, idempotent shar
 
 ## UI status
 
-`PermanentWorld` is the default application. `WorldOverlay` and `Minimap` remain active in Classic Studio. `PixelEditor` and `EntityCreatorModal` remain experimental, unmounted components.
+`PermanentWorld` is the only application entry. The obsolete `App`, `WorldOverlay`, and Classic onboarding were removed. `RasterStudio` provides local image editing and versioned owner revisions; `StudioUtilities` preserves saved-world access. `PixelEditor` and `EntityCreatorModal` remain experimental, unmounted components. See [the migration map and limitations](docs/STUDIO_MIGRATION.md).
 
 ## Documentation
 

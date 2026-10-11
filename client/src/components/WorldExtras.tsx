@@ -5,7 +5,7 @@ import { readBeacons, readClaims, type SubscriptionTier } from '../economy';
 import { locationUrl } from '../location';
 
 interface Props {
-  engine: WorldEngine | null;
+  engine: Pick<WorldEngine, 'getCamera' | 'setClaims' | 'setHeatmap'> | null;
   subscriptionTier: SubscriptionTier;
   ownedItems: string[];
   revision: number;
@@ -40,7 +40,7 @@ export default function WorldExtras({
       cy = Math.floor(camera.y / 128);
     const current = readClaims();
     if (current.some((item) => item.cx === cx && item.cy === cy)) {
-      onToast('This chunk is already claimed');
+      onToast('This area already has a local marker');
       return;
     }
     if (current.filter((item) => item.owner === 'me').length >= 3) {
@@ -50,7 +50,7 @@ export default function WorldExtras({
     const next = [...current, { cx, cy, owner: 'me', expiresAt: Date.now() + 30 * 86400000 }];
     localStorage.setItem('fn_claimed_chunks', JSON.stringify(next));
     engine?.setClaims(next);
-    onToast(`Claimed chunk ${cx}, ${cy} for 30 days on this device`);
+    onToast(`Marked area ${cx}, ${cy} for 30 days on this device. This grants no ownership.`);
   };
 
   return (
@@ -77,14 +77,14 @@ export default function WorldExtras({
           )}
           {subscriptionTier === 'vip' && (
             <button onClick={claim}>
-              <Shield size={15} /> Claim current chunk
+              <Shield size={15} /> Mark current area locally
             </button>
           )}
           {claims
             .filter((item) => item.owner === 'me')
             .map((item) => (
               <small key={`${item.cx},${item.cy}`}>
-                Protected locally: {item.cx}, {item.cy}
+                Local marker: {item.cx}, {item.cy}
               </small>
             ))}
           {beacons.map((beacon) => (

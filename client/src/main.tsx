@@ -1,6 +1,5 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App.tsx';
 import PermanentWorld from './permanent/PermanentWorld';
 import ErrorBoundary from './components/ErrorBoundary.tsx';
 import {
@@ -35,13 +34,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <WorldRepositoryProvider repository={repository}>
       <ErrorBoundary>
-        {isPolicyPage(location.pathname) ? (
-          <PolicyPage />
-        ) : new URLSearchParams(location.search).get('mode') === 'classic' ? (
-          <App />
-        ) : (
-          <PermanentWorld />
-        )}
+        {isPolicyPage(location.pathname) ? <PolicyPage /> : <PermanentWorld />}
       </ErrorBoundary>
     </WorldRepositoryProvider>
   </React.StrictMode>,

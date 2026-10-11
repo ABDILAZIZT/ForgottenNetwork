@@ -52,42 +52,44 @@ const tiers: Array<{
   {
     id: 'free',
     name: 'Free Explorer',
-    price: '$0',
+    price: 'Free',
     icon: <Sparkles size={26} />,
     copy: 'Browse the living world, read the coordinates, and watch the unknown unfold.',
     features: [
       'Explore forever',
-      'Main layer drawing after sign-in',
-      '1-4px brushes',
+      'Full studio after artist sign-in',
+      'All brush sizes and palettes',
       'Daily rewards + optional demo ads',
     ],
   },
   {
     id: 'artist',
     name: 'Cyber Artist Pass',
-    price: '$2.99/mo',
-    badge: 'Most Popular',
+    price: 'Free demo',
     icon: <Brush size={26} />,
-    copy: 'The obvious choice for anyone who wants to actually create here.',
-    features: ['All 3 layers', 'Brushes up to 24px', '64 colors + custom hex', '300 gem stipend'],
+    copy: 'Try a local membership badge and daily rewards.',
+    features: ['All studio tools remain free', '300 demo gem activation reward'],
   },
   {
     id: 'vip',
     name: 'Cyber VIP Crown',
-    price: '$6.99/mo',
-    badge: 'Best Value',
+    price: 'Free demo',
     icon: <Crown size={26} />,
     copy: 'For community builders, streamers, and world architects. This world exists because of you.',
-    features: ['Land claims', '25MB uploads', 'VIP palettes', '800 gem stipend', 'Ad-free'],
+    features: [
+      'Local area markers (no ownership)',
+      '800 total demo gem activation reward',
+      'Ad-free',
+    ],
   },
 ];
 
 const featureRows = [
   ['World exploration', 'Yes', 'Yes', 'Yes'],
-  ['Drawing layers', 'Main only', 'All 3', 'All 3'],
-  ['Brush size', '1-4px', '1-24px', '1-24px + spray'],
-  ['Uploads', '3/day, 512KB', '10/day, 5MB', 'Unlimited, 25MB'],
-  ['Palette', '16 colors', '64 + custom hex', '256+ + VIP themes'],
+  ['Studio layers', 'Up to 8', 'Up to 8', 'Up to 8'],
+  ['World brush size', '1-64px', '1-64px', '1-64px'],
+  ['Uploads', 'Server limits apply', 'Server limits apply', 'Server limits apply'],
+  ['Palette', 'All + custom', 'All + custom', 'All + custom'],
   ['Activation gems', '-', '300 once', '800 total'],
   ['Local land claims', 'Gem license', 'Gem license', 'Up to 3 chunks'],
   ['Ads', '3/day available', '3/day available', 'Ad-free'],
@@ -210,7 +212,6 @@ export default function ShopModal({
   initialTab = 'subscriptions',
 }: Props) {
   const [activeTab, setActiveTab] = useState<ShopTab>(initialTab);
-  const [annual, setAnnual] = useState(false);
   const [collection, setCollection] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const modalRef = useModal(isOpen, onClose);
@@ -236,7 +237,7 @@ export default function ShopModal({
 
   const buyBundle = (amount: number, label: string) => {
     onAddGems(amount);
-    notify(`${label} added ${amount} gems.`);
+    notify(`${label}: requested up to 3,000 demo gems. One grant per day, 100,000 balance cap.`);
   };
 
   const activateTier = (tier: SubscriptionTier) => {
@@ -320,27 +321,17 @@ export default function ShopModal({
           {collection && <MarketCatalog />}
           {activeTab === 'subscriptions' && (
             <>
-              <label className="billing-toggle">
-                <input
-                  type="checkbox"
-                  checked={annual}
-                  onChange={(e) => setAnnual(e.target.checked)}
-                />
-                <span>Preview annual pricing (20% off)</span>
-              </label>
+              <p>
+                All drawing tools are free. These memberships only change local demo rewards and
+                badges.
+              </p>
               <div className="fn-tier-grid">
                 {tiers.map((tier) => (
                   <div key={tier.id} className={`fn-shop-card tier-card ${tier.id}`}>
                     {tier.badge && <div className="card-badge pulse">{tier.badge}</div>}
                     <div className="card-icon">{tier.icon}</div>
                     <h4>{tier.name}</h4>
-                    <div className="tier-price">
-                      {annual && tier.id !== 'free'
-                        ? tier.id === 'artist'
-                          ? '$28.70/year'
-                          : '$67.10/year'
-                        : tier.price}
-                    </div>
+                    <div className="tier-price">{tier.price}</div>
                     <p>{tier.copy}</p>
                     <ul>
                       {tier.features.map((feature) => (
@@ -419,7 +410,7 @@ export default function ShopModal({
                       disabled={locked}
                       onClick={() => buyBundle(bundle.gems, bundle.name)}
                     >
-                      {locked ? 'VIP Exclusive' : `Try demo bundle (${bundle.price})`}
+                      {locked ? 'VIP demo' : 'Request free demo gems'}
                     </button>
                   </div>
                 );
@@ -429,7 +420,9 @@ export default function ShopModal({
 
           {activeTab === 'items' && (
             <div className="fn-items-grid">
-              {GEM_SHOP_ITEMS.map((item) => {
+              {GEM_SHOP_ITEMS.filter((item) =>
+                ['chunk_visitor_map', 'teleport_beacon', 'land_license'].includes(item.id),
+              ).map((item) => {
                 const owned = ownedItems.includes(item.id) && !item.repeatable;
                 const disabled = owned || userGems < item.cost;
                 return (

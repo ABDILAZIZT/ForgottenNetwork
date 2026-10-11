@@ -1,7 +1,7 @@
 const test = require('node:test'),
   assert = require('node:assert/strict');
 const { randomUUID } = require('node:crypto');
-const { CanvasStore } = require('../permanent/store');
+const { CanvasStore, normalizeElement } = require('../permanent/store');
 const express = require('express');
 const { createPermanentCanvas } = require('../permanent/api');
 const mark = (x) => ({
@@ -12,6 +12,22 @@ const mark = (x) => ({
   width: 16,
   height: 16,
   content: { color: '#ffffff', size: 4, opacity: 1 },
+});
+test('image rotation and shape styles survive server normalization; invalid rotations reject', () => {
+  const image = {
+    ...mark(0),
+    type: 'image',
+    content: { color: '#ffffff', size: 1, opacity: 1, assetId: 'asset-123', rotation: 45 },
+  };
+  assert.equal(normalizeElement(image).content.rotation, 45);
+  assert.throws(() =>
+    normalizeElement({ ...image, content: { ...image.content, rotation: Infinity } }),
+  );
+  const shape = {
+    ...mark(0),
+    content: { color: '#ffffff', size: 12, opacity: 0.5, fill: false, strokeColor: '#112233' },
+  };
+  assert.deepEqual(normalizeElement(shape).content, shape.content);
 });
 
 test('edit HTTP API requires authentication and owner; new revision is authoritative in a fresh read', async (t) => {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { rgb, hex, hsv, fromHsv } from './color';
+import { THEMES } from '../palettes';
 export default function ColorControls({
   value,
   onChange,
@@ -8,12 +9,40 @@ export default function ColorControls({
   onChange: (color: string) => void;
 }) {
   const [text, setText] = useState(value);
+  const [palette, setPalette] = useState('palette_neon_noir');
   useEffect(() => setText(value), [value]);
   const channels = rgb(value),
     spectrum = hsv(value);
   return (
     <details className="pw-color-controls">
       <summary>HEX · RGB · HSV</summary>
+      <label>
+        Palette
+        <select value={palette} onChange={(e) => setPalette(e.target.value)}>
+          {Object.keys(THEMES).map((name) => (
+            <option key={name} value={name}>
+              {name.replace('palette_', '').replace(/_/g, ' ')}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="rs-tools">
+        {THEMES[palette].map((color) => (
+          <button
+            key={color}
+            title={color}
+            aria-label={'Choose ' + color}
+            style={{
+              background: color,
+              width: 24,
+              height: 24,
+              padding: 0,
+              border: '1px solid #888',
+            }}
+            onClick={() => onChange(color)}
+          />
+        ))}
+      </div>
       <label>
         HEX
         <input

@@ -11,7 +11,8 @@ export type Tool =
   | 'sticker'
   | 'stamp'
   | 'eraser'
-  | 'export';
+  | 'export'
+  | 'eyedropper';
 export type Point = [number, number];
 export interface Content {
   color: string;
@@ -24,12 +25,13 @@ export interface Content {
   text?: string;
   font?: string;
   assetId?: string;
+  rotation?: number;
   sticker?: string;
   animated?: boolean;
 }
 export interface Placement {
   id: string;
-  type: Exclude<Tool, 'pan' | 'eraser' | 'export'>;
+  type: Exclude<Tool, 'pan' | 'eraser' | 'export' | 'eyedropper'>;
   x: number;
   y: number;
   width: number;

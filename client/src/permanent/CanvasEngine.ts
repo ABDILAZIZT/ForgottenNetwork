@@ -1,6 +1,7 @@
 import { Camera } from '../engine/Camera';
 import { drawArt, loadArt } from './art';
 import { placementCells } from './geometry';
+import type { LandClaim } from '../economy';
 import type { Artwork, Blocked, Content, Peer, Placement, Point, Tool, View } from './types';
 
 export interface Settings {
@@ -14,6 +15,7 @@ export interface Settings {
   sticker: string;
   animated: boolean;
   assetId?: string;
+  rotation?: number;
   mediaWidth: number;
   mediaRatio: number;
   draftMode: boolean;
@@ -39,6 +41,7 @@ interface Hooks {
   export: (view: View) => void;
   signIn: () => void;
   eraseArtwork: (art: Artwork) => void;
+  sample?: (color: string) => void;
 }
 export class PermanentEngine {
   camera = new Camera();
@@ -69,6 +72,17 @@ export class PermanentEngine {
   };
   challenge: View | null = null;
   highlightChallenge = false;
+  private localClaims: LandClaim[] = [];
+  private densityMap = false;
+  getCamera() {
+    return this.camera;
+  }
+  setClaims(claims: LandClaim[]) {
+    this.localClaims = claims;
+  }
+  setHeatmap(enabled: boolean) {
+    this.densityMap = enabled;
+  }
   private ctx: CanvasRenderingContext2D;
   private frame = 0;
   private observer: ResizeObserver;
@@ -280,6 +294,10 @@ export class PermanentEngine {
     drafts.forEach((e) => this.hooks.commit(e));
     this.hooks.drafts(this.draftList.length);
   }
+  stage(element: Placement) {
+    this.draftList.push(element);
+    this.hooks.drafts(this.draftList.length);
+  }
   undoDraft() {
     this.draftList.pop();
     this.hooks.drafts(this.draftList.length);
@@ -292,7 +310,7 @@ export class PermanentEngine {
   private make(points: Point[]): Placement | null {
     const s = this.settings,
       type = s.tool;
-    if (['pan', 'eraser', 'export'].includes(type) || !points.length) return null;
+    if (['pan', 'eraser', 'export', 'eyedropper'].includes(type) || !points.length) return null;
     if (['rectangle', 'ellipse', 'line', 'arrow'].includes(type)) {
       const pad =
         type === 'arrow'
@@ -360,6 +378,7 @@ export class PermanentEngine {
       if (type === 'image' || type === 'stamp') {
         if (!s.assetId) return null;
         content.assetId = s.assetId;
+        content.rotation = s.rotation || 0;
         content.animated = s.animated;
       }
     }
@@ -408,6 +427,21 @@ export class PermanentEngine {
     }
     this.panning = this.settings.tool === 'pan' || e.button === 1 || e.button === 2 || this.space;
     if (this.panning) return;
+    if (this.settings.tool === 'eyedropper') {
+      const rgba = this.ctx.getImageData(
+        Math.max(0, Math.min(this.canvas.width - 1, Math.floor(e.offsetX * this.dpr))),
+        Math.max(0, Math.min(this.canvas.height - 1, Math.floor(e.offsetY * this.dpr))),
+        1,
+        1,
+      ).data;
+      this.hooks.sample?.(
+        '#' +
+          Array.from(rgba.slice(0, 3))
+            .map((n) => n.toString(16).padStart(2, '0'))
+            .join(''),
+      );
+      return;
+    }
     if (!this.settings.enabled && this.settings.tool !== 'export') {
       this.hooks.signIn();
       return;
@@ -595,6 +629,15 @@ export class PermanentEngine {
       )
       .sort((a, b) => a.zIndex - b.zIndex);
     for (const e of visible) drawArt(ctx, e, t);
+    if (this.densityMap) {
+      ctx.fillStyle = '#22aadd30';
+      for (const e of visible) ctx.fillRect(e.x, e.y, e.width, e.height);
+    }
+    ctx.strokeStyle = '#d5a85c88';
+    ctx.lineWidth = 1 / this.camera.zoom;
+    for (const c of this.localClaims) {
+      if (c.expiresAt > Date.now()) ctx.strokeRect(c.cx * 128, c.cy * 128, 128, 128);
+    }
     for (const [id, draft] of this.remoteDrafts) {
       if (time - draft.seen > 3000) {
         this.remoteDrafts.delete(id);
@@ -690,6 +733,28 @@ export class PermanentEngine {
         Math.PI * 2,
       );
       ctx.stroke();
+    }
+    if (this.settings.tool === 'eyedropper') {
+      const x = Math.max(
+          0,
+          Math.min(this.canvas.width - 9, Math.floor(this.cursor[0] * this.dpr) - 4),
+        ),
+        y = Math.max(
+          0,
+          Math.min(this.canvas.height - 9, Math.floor(this.cursor[1] * this.dpr) - 4),
+        );
+      const pixels = ctx.getImageData(x, y, 9, 9);
+      ctx.save();
+      for (let row = 0; row < 9; row++)
+        for (let col = 0; col < 9; col++) {
+          const i = (row * 9 + col) * 4;
+          ctx.fillStyle = `rgb(${pixels.data[i]},${pixels.data[i + 1]},${pixels.data[i + 2]})`;
+          ctx.fillRect(this.cursor[0] + 22 + col * 5, this.cursor[1] + 22 + row * 5, 5, 5);
+        }
+      ctx.strokeStyle = '#22d3ee';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(this.cursor[0] + 42, this.cursor[1] + 42, 5, 5);
+      ctx.restore();
     }
     if (time - this.lastView > 180) {
       this.lastView = time;
