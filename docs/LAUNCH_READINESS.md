@@ -1,6 +1,6 @@
 # Launch readiness and operator handoff
 
-Updated 2026-09-10. This document describes the current implementation; earlier phase documents are historical design/implementation notes.
+Updated 2026-10-14. This document describes the current implementation; earlier phase documents are historical design/implementation notes.
 
 ## Current decision
 
@@ -39,7 +39,7 @@ Updated 2026-09-10. This document describes the current implementation; earlier 
 
 ## Local verification
 
-Latest completed checks: `pnpm check` passed (48 tests: 3 shared, 20 client, 25 server), plus an explicit remote-mode production build. `pnpm audit --prod` reported no known vulnerabilities after upgrading the transitive query parser for [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g) and [GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx). An advisory scan is not a penetration test or a guarantee of security.
+Latest completed checks (2026-10-14): `pnpm check` passed (104 tests: 3 shared, 51 client, 50 server), plus a local browser/API smoke check. `pnpm audit --prod` previously reported no known vulnerabilities after upgrading the transitive query parser for [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g) and [GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx). An advisory scan is not a penetration test or a guarantee of security.
 
 Run `pnpm check` for formatting, lint, tests and production build. Server tests use temporary embedded PostgreSQL by default and do not touch `server/db.json` or a hosted database. For native integration, supply `TEST_DATABASE_URL` pointing to a disposable localhost database whose name ends in `_test`; use a fresh database for each run.
 
@@ -50,7 +50,7 @@ Browser checks cover the local community panel, contribution selection, Visit co
 ## Start here: create staging
 
 1. Create your Render account and an Auth0 (or compatible OIDC) regular web application. Keep credentials in provider secret settings, never chat or source control.
-2. Put the project in your Git repository. Create a Render Blueprint using `render.yaml`, review the paid plans and region, and obtain the website origin. Configure `APP_ORIGIN` and `CORS_ORIGIN` to that same HTTPS origin without a trailing slash. The Blueprint provisions PostgreSQL and runs migrations before startup.
+2. Put the project in your Git repository and review `render.yaml`. It currently selects free Node and PostgreSQL plans, has no durable SQLite disk, and is not suitable for public data. Free Render PostgreSQL is temporary. Before provisioning production, choose a paid web service with persistent storage or migrate the permanent canvas to durable managed storage. Then configure `APP_ORIGIN` and `CORS_ORIGIN` to the same HTTPS origin without a trailing slash. The Blueprint provisions PostgreSQL and runs migrations before startup.
 3. Register `https://YOUR-STAGING-HOST/api/v1/auth/callback` with the identity provider. Set `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` and the generated `SESSION_SECRET`. Never configure development bearer tokens in production.
 4. For production media, create a private S3-compatible bucket with encryption and versioning. Configure `S3_BUCKET`, `S3_REGION`, optional `S3_ENDPOINT`, and the credential pair in the host secret store (or use a host-managed AWS identity). Grant only the bucket permissions needed for object reads/writes. No public bucket or browser storage credentials are needed. Do not remove the bucket configuration after stored records reference it.
 5. Sign in once, inspect your own `/api/v1/me` response to obtain the immutable user ID, then use a trusted operator terminal with database access:

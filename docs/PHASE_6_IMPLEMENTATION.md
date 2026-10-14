@@ -8,7 +8,7 @@ Historical phase note: later security, moderation and recovery work is recorded 
 - Visitor export does not flush pending edits. Import, retry and undo controls require publishing permission; import handlers and engine undo enforce this too.
 - Express serves the built frontend and API on one origin. HTML is revalidated; hashed assets are cached. Unknown API routes and missing assets remain errors instead of returning the app HTML.
 - Production no longer initializes the development JSON file when PostgreSQL is selected.
-- `render.yaml` defines a Node web service and PostgreSQL database with migrations before startup, generated session secrets, and private database networking. Both selected plans are paid; review costs in Render before creating resources.
+- The current `render.yaml` draft defines **free** Node and PostgreSQL plans. It is suitable only for short-lived preview work: the free database expires, free web services have ephemeral filesystems, and the permanent canvas SQLite file has no durable disk. Choose an affordable paid service with persistent storage or move the permanent canvas store to durable managed storage before using it for public data. No external resources have been created.
 
 ## Deploy to staging
 

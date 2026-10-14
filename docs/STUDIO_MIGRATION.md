@@ -2,6 +2,8 @@
 
 The only mounted application is `PermanentWorld`. Old `?mode=classic` bookmarks resolve to the same studio, retaining coordinates. The obsolete `App.tsx`, `WorldOverlay.tsx` and Classic onboarding were removed. Storage adapters, API endpoints, ownership migrations, entity renderer and queued writes are retained for compatibility. No production data migration or automatic publication is performed.
 
+The unreferenced legacy `PixelEditor.tsx` and `EntityCreatorModal.tsx` components were removed. Their unfinished workflows are superseded by the active `RasterStudio` and saved-entity tools; no application callers or public routes depended on them.
+
 ## Feature destinations
 
 | Previous feature                                  | Current destination                                                                                                                                     |
@@ -40,6 +42,6 @@ Flood fill, lasso, marquee, color adjustments and layer transformations work ins
 
 ## Verification
 
-The final regression run passed shared **3**, client **51**, server **50** tests, lint and the production TypeScript/Vite build. Coverage includes pixel size reaching the renderer, draft-only staging, shape settings, flood-fill tolerance/selection masks, transformed handle coordinates, owner-only atomic edit, foreign direct HTTP edit/delete rejection, conflict rollback and idempotent retries (including superseded receipt rejection).
+The final regression run passed the full `pnpm check`: shared **3**, client **51**, and server **50** tests, repository formatting and lint, TypeScript checks, and the production Vite build. Coverage includes pixel size reaching the renderer, draft-only staging, shape settings, flood-fill tolerance/selection masks, transformed handle coordinates, owner-only atomic edit, foreign direct HTTP edit/delete rejection, conflict rollback and idempotent retries (including superseded receipt rejection).
 
-Local browser QA used a disposable server and in-memory canvas: artist creation, drawing, marquee, numeric move/rotation preview, save as draft, reload restoring mode/draft count, light theme, phone-width navigation, saved-world identity bridge, and an actual JSON download. Existing repository-wide formatting issues are not asserted fixed; changed files are formatted separately. Browser testing is exploratory, not proof of zero regressions or exhaustive accessibility compliance.
+Local browser QA used a disposable server and in-memory canvas: artist creation, drawing, marquee, numeric move/rotation preview, save as draft, reload restoring mode/draft count, light theme, phone-width navigation, saved-world identity bridge, and an actual JSON download. Browser testing is exploratory, not proof of zero regressions or exhaustive accessibility compliance.

@@ -41,7 +41,7 @@ The combined check verifies formatting, linting, frontend and backend tests, Typ
 ```text
 client/
   src/permanent/    Permanent canvas, tools, social UI, renderer, durable retry queue
-  src/components/   React HUD, minimap, and experimental creation UI
+  src/components/   Shared interface panels, rewards, marketplace, and minimap
   src/engine/       Canvas renderer, chunks, camera, entities, GIFs, IndexedDB driver
   src/repositories/ World persistence contract plus local and remote adapters
 server/
@@ -72,7 +72,7 @@ Classic Studio remote mode connects the repository to versioned, idempotent shar
 
 ## UI status
 
-`PermanentWorld` is the only application entry. The obsolete `App`, `WorldOverlay`, and Classic onboarding were removed. `RasterStudio` provides local image editing and versioned owner revisions; `StudioUtilities` preserves saved-world access. `PixelEditor` and `EntityCreatorModal` remain experimental, unmounted components. See [the migration map and limitations](docs/STUDIO_MIGRATION.md).
+`PermanentWorld` is the only application entry. The obsolete `App`, `WorldOverlay`, Classic onboarding, `PixelEditor`, and `EntityCreatorModal` were removed because they had no callers. `RasterStudio` provides local image editing and versioned owner revisions; `StudioUtilities` preserves saved-world access. See [the migration map and limitations](docs/STUDIO_MIGRATION.md).
 
 ## Documentation
 

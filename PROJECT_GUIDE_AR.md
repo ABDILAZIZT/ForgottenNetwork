@@ -76,11 +76,12 @@ pnpm start
 cyber-terrarium/
 ├── client/                     # الواجهة الأمامية (React + TypeScript + Canvas)
 │   ├── src/
-│   │   ├── components/        # مكونات الواجهة (WorldOverlay, Minimap, PixelEditor, EntityCreatorModal)
-│   │   ├── engine/            # محرك الرسم وإدارة العالم (Engine, Camera, Chunk, Entity, Atmosphere, db)
-│   │   ├── App.tsx            # المكون الرئيسي للربط بين المحرك والواجهة
-│   │   ├── index.css          # نظام التنسيق الجمالي والـ Retrowave HUD
-│   │   └── main.tsx           # نقطة الانطلاق لتطبيق React
+│   │   ├── permanent/         # العالم الدائم، أدوات الرسم، الاستوديو، وواجهات المجتمع
+│   │   ├── components/        # اللوحات المشتركة والمكافآت والمتجر والخريطة المصغرة
+│   │   ├── repositories/      # التخزين المحلي ومهايئات التخزين البعيد
+│   │   ├── engine/            # محرك Classic القديم ومخزن IndexedDB للتوافق
+│   │   ├── Policies.tsx       # قواعد المجتمع والخصوصية والسلامة
+│   │   └── main.tsx           # نقطة الدخول، وتعرض PermanentWorld حالياً
 │   ├── package.json           # حزم الواجهة (Vite, React, Lucide Icons, etc.)
 │   └── vite.config.ts         # إعدادات Vite
 │
@@ -123,8 +124,8 @@ cyber-terrarium/
 
 - `WorldOverlay.tsx`: شريط الأدوات العلوي والجانبي (HUD) لانتخاب الأدوات (Pan, Draw, Erase, Color Picker, Fill Bucket, Spawn Entity, Undo, Save, Load, Teleport).
 - `Minimap.tsx`: خريطة مصغرة أسفل الشاشة توضح موقع الكاميرا الحالي والقطاعات المحملة في الذاكرة.
-- `PixelEditor.tsx`: محرر بكسل تجريبي محفوظ للتطوير اللاحق، وغير موصول حالياً بالتطبيق الرئيسي.
-- `EntityCreatorModal.tsx`: مسار تجريبي لإنشاء الكائنات، وغير موصول حالياً بالتطبيق الرئيسي.
+- `RasterStudio.tsx`: محرر الرسم النقطي النشط، ويدعم المسودات وتعديل الأعمال المنشورة وفق الصلاحيات.
+- أُزيل `PixelEditor.tsx` و`EntityCreatorModal.tsx` لعدم وجود استخدام لهما؛ مسار التحرير الحالي هو RasterStudio.
 
 ---
 
@@ -187,8 +188,8 @@ cyber-terrarium/
    - يمكنك إضافة endpoints جديدة لتخزين الإحصائيات، سجلات التغيير، أو التفاعل الجماعي بين اللاعبين.
 
 3. **تطوير مسار إنشاء الشخصيات**:
-   - يمكن ربط `PixelEditor.tsx` و`EntityCreatorModal.tsx` بالتطبيق الرئيسي في مرحلة لاحقة.
-   - مسار الرفع النشط حالياً موجود داخل `WorldOverlay.tsx` ويحفظ الوسائط في IndexedDB.
+   - يستخدم التطبيق الحالي `PermanentWorld` للرسم والنشر و`RasterStudio` للتحرير.
+   - تُدار المسودات والنشر والوسائط عبر الواجهات الحالية وسياسات الخادم؛ راجع `docs/PERMANENT_CANVAS.md` و`docs/STUDIO_MIGRATION.md`.
 
 ---
 

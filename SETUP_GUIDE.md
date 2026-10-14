@@ -27,11 +27,11 @@ The project runs locally. Advertising and card payments are intentionally previe
 
 ## المتطلبات والإعداد المحلي
 
-Install [Node.js](https://nodejs.org/) (tested with Node 24.19; project minimum 22.13), pnpm 11.19.0 and optionally [Git](https://git-scm.com/). Extract the archive to a short local path. In PowerShell:
+Install [Node.js](https://nodejs.org/) (tested with Node 24.19; project minimum 22.13), pnpm 11.25.0 and optionally [Git](https://git-scm.com/). Extract the archive to a short local path. In PowerShell:
 
 ```powershell
 node --version
-npm install -g pnpm@11.19.0
+npm install -g pnpm@11.25.0
 cd "C:\path\to\ForgottenNetwork"
 pnpm install --frozen-lockfile
 ```
@@ -154,7 +154,7 @@ The Starter/Creator/Ultimate planned prices are $7.99/$14.99/$19.99. Coin packs 
 
 ## النشر على Render.com
 
-The included `render.yaml` describes a Node web service, PostgreSQL and a persistent SQLite disk. Review current plans and charges before applying it. The application serves `client/dist` in production and needs a long-running server for WebSockets.
+The included `render.yaml` is a free preview template. It does not provide a persistent SQLite disk, and its free PostgreSQL database is temporary. Do not use it for public data. Before launch, choose a paid service with persistent storage or move the permanent canvas to durable managed storage, and review current plans and charges. The application serves `client/dist` in production and needs a long-running server for WebSockets.
 
 1. Review `.gitignore`; keep credentials, private databases and installed dependencies out of Git. Initialize Git only if this is not already your repository:
 

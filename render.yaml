@@ -1,10 +1,11 @@
+# Free plans are for short-lived preview only; public data needs durable storage.
 services:
   - type: web
     name: forgotten-network
     runtime: node
     plan: free
     region: frankfurt
-    buildCommand: npm install -g pnpm@9 && pnpm install --production=false --no-frozen-lockfile && pnpm run build
+    buildCommand: npm install -g pnpm@11.25.0 && pnpm install --production=false --no-frozen-lockfile && pnpm run build
     startCommand: node server/index.js
     healthCheckPath: /api/health
     envVars:
@@ -25,7 +26,7 @@ services:
       - key: DATABASE_SSL
         value: 'true'
       - key: DATABASE_SSL_REJECT_UNAUTHORIZED
-        value: 'false'
+        value: 'true'
       - key: MIGRATE_ON_START
         value: 'true'
       - key: SESSION_SECRET
@@ -33,9 +34,13 @@ services:
       - key: APP_ORIGIN
         value: https://forgotten-network.onrender.com
       - key: CORS_ORIGIN
-        value: https://forgotten-network.onrender.com,http://localhost:5173
-      - key: DISABLE_AUTH_VALIDATION
-        value: 'true'
+        value: https://forgotten-network.onrender.com
+      - key: OIDC_ISSUER_URL
+        sync: false
+      - key: OIDC_CLIENT_ID
+        sync: false
+      - key: OIDC_CLIENT_SECRET
+        sync: false
       - key: REQUEST_LOGS
         value: 'true'
 databases:

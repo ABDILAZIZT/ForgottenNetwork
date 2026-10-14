@@ -4,9 +4,9 @@
   "description": "A living pixel-art web experience",
   "private": true,
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.13.0"
   },
-  "packageManager": "pnpm@9.15.4",
+  "packageManager": "pnpm@11.25.0",
   "scripts": {
     "install:all": "pnpm install",
     "start": "concurrently \"pnpm run start:server\" \"pnpm run start:client\"",
