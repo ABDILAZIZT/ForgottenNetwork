@@ -14,6 +14,17 @@ type Report = {
   chunk_y: number;
   world_id: string;
   reason: string;
+  automatic_hidden?: boolean;
+  open_reporters?: number;
+};
+type PendingMedia = {
+  world_id: string;
+  id: string;
+  owner_id: string;
+  owner_name: string;
+  media_type: string;
+  byte_size: number;
+  created_at: string;
 };
 type Audit = { id: string; action: string; reason: string; created_at: string };
 async function request<T>(path: string, body?: unknown): Promise<T> {
@@ -61,6 +72,7 @@ export default function CommunityPanel({
   const [reason, setReason] = useState('');
   const [status, setStatus] = useState('');
   const [reports, setReports] = useState<Report[]>([]);
+  const [pendingMedia, setPendingMedia] = useState<PendingMedia[]>([]);
   const [audit, setAudit] = useState<Audit[]>([]);
   const [busy, setBusy] = useState(false);
   const [account, setAccount] = useState('');
@@ -85,6 +97,7 @@ export default function CommunityPanel({
     }
     if (isModerator && repository.mode === 'remote') {
       setReports((await request<{ reports: Report[] }>('/moderation/reports')).reports);
+      setPendingMedia((await request<{ assets: PendingMedia[] }>('/moderation/media')).assets);
       setAudit((await request<{ events: Audit[] }>('/moderation/audit')).events);
     }
   }
@@ -304,6 +317,12 @@ export default function CommunityPanel({
             reports.map((report) => (
               <article key={report.id}>
                 <p>{report.reason}</p>
+                {report.automatic_hidden && (
+                  <p role="status">
+                    Automatically hidden while {report.open_reporters || 'three or more'} artists
+                    have open reports.
+                  </p>
+                )}
                 <small>{report.entity_id || `Chunk ${report.chunk_x}, ${report.chunk_y}`}</small>
                 <br />
                 {report.entity_id && (
@@ -323,6 +342,54 @@ export default function CommunityPanel({
                 </button>{' '}
                 <button onClick={() => void moderation('dismiss_report', { reportId: report.id })}>
                   Dismiss
+                </button>
+              </article>
+            ))
+          )}
+          <h3>Media waiting for approval</h3>
+          {pendingMedia.length === 0 ? (
+            <p>No uploads are waiting for review.</p>
+          ) : (
+            pendingMedia.map((media) => (
+              <article key={`${media.world_id}:${media.id}`}>
+                <p>
+                  {media.media_type} · {media.byte_size.toLocaleString()} bytes · by{' '}
+                  {media.owner_name || media.owner_id}
+                </p>
+                <RemoteMediaPreview media={media} />
+                <button
+                  disabled={busy || reason.trim().length < 5}
+                  onClick={() => {
+                    if (window.confirm('Approve this image for public display?'))
+                      void perform(
+                        () =>
+                          request(`/moderation/media/${media.world_id}/${media.id}`, {
+                            operationId: crypto.randomUUID(),
+                            action: 'approve',
+                            reason,
+                          }),
+                        'Media approved for public use.',
+                      );
+                  }}
+                >
+                  Approve for public use
+                </button>{' '}
+                <button
+                  disabled={busy || reason.trim().length < 5}
+                  onClick={() => {
+                    if (window.confirm('Reject this upload and keep it private?'))
+                      void perform(
+                        () =>
+                          request(`/moderation/media/${media.world_id}/${media.id}`, {
+                            operationId: crypto.randomUUID(),
+                            action: 'reject',
+                            reason,
+                          }),
+                        'Media rejected and kept private.',
+                      );
+                  }}
+                >
+                  Reject and keep private
                 </button>
               </article>
             ))
@@ -391,5 +458,46 @@ export default function CommunityPanel({
         <AdSlot slotId="ad-slot-sidebar" position="community-panel-footer" />
       )}
     </section>
+  );
+}
+
+function RemoteMediaPreview({ media }: { media: PendingMedia }) {
+  const [src, setSrc] = useState('');
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let url = '';
+    const controller = new AbortController();
+    const base = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+    void fetch(
+      `${base}/moderation/media/${encodeURIComponent(media.world_id)}/${encodeURIComponent(media.id)}`,
+      { credentials: 'include', signal: controller.signal },
+    )
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Private preview is unavailable.');
+        url = URL.createObjectURL(await response.blob());
+        setSrc(url);
+      })
+      .catch((reason: unknown) => {
+        if (!controller.signal.aborted)
+          setError(reason instanceof Error ? reason.message : 'Private preview is unavailable.');
+      });
+    return () => {
+      controller.abort();
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [media.id, media.world_id]);
+  if (error) return <p role="status">{error}</p>;
+  if (!src) return <p role="status">Loading private review preview…</p>;
+  return (
+    <img
+      src={src}
+      alt={`Pending ${media.media_type} upload from ${media.owner_name}`}
+      style={{
+        display: 'block',
+        maxWidth: 'min(100%, 512px)',
+        maxHeight: 512,
+        objectFit: 'contain',
+      }}
+    />
   );
 }

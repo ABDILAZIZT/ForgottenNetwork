@@ -854,6 +854,12 @@ export default function PermanentWorld() {
     setBusy(true);
     try {
       const asset = await upload(file);
+      if (asset.pendingReview) {
+        toastMessage(
+          'Upload held for moderator review. Check Safety & privacy; it cannot be placed until approved.',
+        );
+        return;
+      }
       setSettings((s) => ({
         ...s,
         tool: 'image',
@@ -883,9 +889,13 @@ export default function PermanentWorld() {
       if (avatar) {
         try {
           const image = await upload(avatar, true, result.token);
-          result.user = await api<Identity>('/avatar', result.token, { assetId: image.id });
-          localStorage.setItem('fn_canvas_identity', JSON.stringify(result));
-          setSession({ ...result });
+          if (image.pendingReview)
+            toastMessage('Identity saved. Your avatar is held for review; check Safety & privacy.');
+          else {
+            result.user = await api<Identity>('/avatar', result.token, { assetId: image.id });
+            localStorage.setItem('fn_canvas_identity', JSON.stringify(result));
+            setSession({ ...result });
+          }
         } catch (error) {
           toastMessage('Identity saved. ' + (error as Error).message);
         }
@@ -1054,6 +1064,12 @@ export default function PermanentWorld() {
         id: crypto.randomUUID(),
       };
     const { asset, id } = editorUpload.current;
+    if (asset.pendingReview) {
+      toastMessage(
+        'Upload held for moderator review. Check Safety & privacy; it cannot be published until approved.',
+      );
+      return;
+    }
     if (editor.avatar) {
       const user = await api<Identity>('/avatar', session.token, { assetId: asset.id });
       const next = { ...session, user };

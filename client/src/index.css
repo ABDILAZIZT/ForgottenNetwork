@@ -42,13 +42,15 @@ body,
   color: var(--text);
   font-family: 'Inter', system-ui, sans-serif;
   font-size: 13px;
-  user-select: none;
-  -webkit-user-select: none;
 }
 
 /* ── World root ────────────────────────────────────── */
 #world-root {
   background: var(--bg);
+}
+#world-root canvas {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Scanline overlay (floor796 aesthetic) */

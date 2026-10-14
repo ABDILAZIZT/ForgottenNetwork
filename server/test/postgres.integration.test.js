@@ -15,6 +15,7 @@ const world = '00000000-0000-4000-8000-000000000001';
 const member = '00000000-0000-4000-8000-000000000010';
 const other = '00000000-0000-4000-8000-000000000020';
 const mod = '00000000-0000-4000-8000-000000000030';
+const visitor = '00000000-0000-4000-8000-000000000040';
 let pool, server, base;
 const storedObjects = new Map();
 async function call(route, { user, body, method = 'GET', headers = {} } = {}) {
@@ -37,6 +38,7 @@ test.before(async () => {
     [member, 'member'],
     [other, 'member'],
     [mod, 'moderator'],
+    [visitor, 'member'],
   ])
     await pool.query(
       "INSERT INTO users(id,auth_provider,auth_subject,display_name,role) VALUES($1,'test',$3,$2,$4)",
@@ -97,7 +99,7 @@ test.after(async () => {
 });
 
 test('migrations are executable and repeatable, readiness is PostgreSQL-backed', async () => {
-  assert.equal((await pool.query('SELECT * FROM schema_migrations')).rowCount, 5);
+  assert.equal((await pool.query('SELECT * FROM schema_migrations')).rowCount, 7);
   assert.equal((await call('/health/ready')).body.storage, 'postgresql');
 });
 test('chunk writes protect versions, history, target identity and deletion tombstones', async () => {
@@ -254,12 +256,87 @@ test('real image validation, asset ownership, reports, moderation and audit inte
     type: 'image/png',
     data: `data:image/png;base64,${data.toString('base64')}`,
   };
-  assert.equal(
-    (await call(`/worlds/${world}/assets/picture`, { user: member, method: 'PUT', body: upload }))
-      .status,
-    201,
-  );
+  const uploaded = await call(`/worlds/${world}/assets/picture`, {
+    user: member,
+    method: 'PUT',
+    body: upload,
+  });
+  assert.equal(uploaded.status, 201);
+  assert.equal(uploaded.body.asset.pendingReview, true);
   assert.equal((await call(`/worlds/${world}/assets/picture`)).status, 404);
+  assert.equal(
+    (await call(`/worlds/${world}/assets/picture`, { user: member })).body.pendingReview,
+    true,
+  );
+  assert.equal((await call(`/worlds/${world}/assets/picture`, { user: other })).status, 404);
+  const pendingEntity = {
+    id: 'pending-image',
+    type: 'uploaded_custom',
+    wx: -512,
+    wy: 0,
+    createdAt: 1,
+    spriteUrl: 'asset:picture',
+  };
+  assert.equal(
+    (
+      await call(`/worlds/${world}/entities/pending-image`, {
+        user: member,
+        method: 'PUT',
+        body: { operationId: crypto.randomUUID(), state: pendingEntity },
+      })
+    ).status,
+    409,
+  );
+  const mediaQueue = await call('/moderation/media', { user: mod });
+  assert.equal(mediaQueue.body.assets[0].id, 'picture');
+  const privatePreview = await fetch(`${base}/moderation/media/${world}/picture`, {
+    headers: { 'x-test-actor': mod },
+  });
+  assert.equal(privatePreview.status, 200);
+  assert.equal(privatePreview.headers.get('cache-control'), 'no-store');
+  assert.equal(
+    (
+      await call(`/moderation/media/${world}/picture`, {
+        user: mod,
+        method: 'POST',
+        body: {
+          operationId: crypto.randomUUID(),
+          action: 'approve',
+          reason: 'Reviewed approved test image.',
+        },
+      })
+    ).status,
+    200,
+  );
+  const rejectedUpload = await call(`/worlds/${world}/assets/blocked-picture`, {
+    user: member,
+    method: 'PUT',
+    body: { ...upload, operationId: crypto.randomUUID() },
+  });
+  assert.equal(rejectedUpload.body.asset.moderationState, 'pending');
+  assert.equal(
+    (
+      await call(`/moderation/media/${world}/blocked-picture`, {
+        user: mod,
+        method: 'POST',
+        body: {
+          operationId: crypto.randomUUID(),
+          action: 'reject',
+          reason: 'Rejected unsafe test media.',
+        },
+      })
+    ).status,
+    200,
+  );
+  const rejectedOwnerRead = await call(`/worlds/${world}/assets/blocked-picture`, {
+    user: member,
+  });
+  assert.equal(rejectedOwnerRead.body.moderationState, 'rejected');
+  assert.equal(rejectedOwnerRead.body.pendingReview, true);
+  assert.equal(
+    (await call(`/worlds/${world}/assets/blocked-picture`, { user: other })).status,
+    404,
+  );
   const state = {
     id: 'example',
     type: 'uploaded_custom',
@@ -323,6 +400,68 @@ test('real image validation, asset ownership, reports, moderation and audit inte
     ).status,
     403,
   );
+  const autoState = { ...state, id: 'auto-reported', wx: 512, wy: 0 };
+  assert.equal(
+    (
+      await call('/worlds/' + world + '/entities/auto-reported', {
+        user: member,
+        method: 'PUT',
+        body: { operationId: crypto.randomUUID(), state: autoState },
+      })
+    ).status,
+    201,
+  );
+  const automaticReports = [];
+  for (const reporter of [member, other, visitor])
+    automaticReports.push(
+      await call(`/worlds/${world}/reports`, {
+        user: reporter,
+        method: 'POST',
+        body: { entityId: 'auto-reported', reason: 'Please review this contribution.' },
+      }),
+    );
+  assert.deepEqual(
+    automaticReports.map((result) => result.body.automaticHidden),
+    [false, false, true],
+  );
+  assert.notEqual(
+    (
+      await pool.query('SELECT hidden_at FROM repository_entities WHERE world_id=$1 AND id=$2', [
+        world,
+        'auto-reported',
+      ])
+    ).rows[0].hidden_at,
+    null,
+  );
+  const queuedAutoReport = (await call('/moderation/reports', { user: mod })).body.reports.find(
+    (row) => row.id === automaticReports[2].body.id,
+  );
+  assert.equal(queuedAutoReport.automatic_hidden, true);
+  assert.equal(
+    (
+      await call('/moderation/actions', {
+        user: mod,
+        method: 'POST',
+        body: {
+          operationId: crypto.randomUUID(),
+          action: 'dismiss_report',
+          reportId: automaticReports[2].body.id,
+          worldId: world,
+          reason: 'Dismissed test report',
+        },
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await pool.query('SELECT hidden_at FROM repository_entities WHERE world_id=$1 AND id=$2', [
+        world,
+        'auto-reported',
+      ])
+    ).rows[0].hidden_at,
+    null,
+  );
   await assert.rejects(pool.query('DELETE FROM safety_audit'), /immutable/);
   assert.equal(
     (
@@ -378,7 +517,7 @@ test('embedded PostgreSQL backup restores content, versions and immutable audit 
     assert.equal(
       (await restored.query('SELECT count(*) FROM repository_assets WHERE verified=true')).rows[0]
         .count,
-      1,
+      2,
     );
     await assert.rejects(restored.query('DELETE FROM safety_audit'), /immutable/);
   } finally {

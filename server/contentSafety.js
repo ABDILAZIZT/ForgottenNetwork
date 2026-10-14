@@ -1,11 +1,14 @@
 // A deliberately limited text filter, not an image classifier or a safety guarantee.
 const prohibited =
-  /(?:^|[^\p{L}\p{N}])(?:porn(?:ography)?|xxx|nudes?|fuck(?:ing|er|s)?|shit|bitch(?:es)?|cunt|nigg(?:er|a)s?|fagg?ots?|kill yourself|heil hitler|كسمك|شرموطة|قحبة|اباحية|إباحية)(?:$|[^\p{L}\p{N}])/iu;
+  /(?:^|[^\p{L}\p{N}])(?:porn(?:ography)?|xxx|nudes?|fuck(?:ing|er|s)?|shit(?:head)?|bitch(?:es)?|cunt|dick|cock|pussy|slut|whore|nigg(?:er|a)s?|fagg?ots?|kill yourself|heil hitler|كس(?:م(?:ك|ه|ها)?)?|خرا|شرموطه|قحبه|اباحيه|طيز|زبي|زبر|عرص|مني(?:ك|وك)|ديوث)(?:$|[^\p{L}\p{N}])/iu;
 function normalized(value) {
   return value
     .normalize('NFKC')
     .toLowerCase()
-    .replace(/[\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/g, '')
+    .replace(/[\p{M}\u0640\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/gu, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
     .replace(
       /[013457@$]/g,
       (c) => ({ 0: 'o', 1: 'i', 3: 'e', 4: 'a', 5: 's', 7: 't', '@': 'a', $: 's' })[c],

@@ -15,6 +15,8 @@ Updated 2026-10-14. This document describes the current implementation; earlier 
 - Image decoding and re-encoding with Sharp: PNG/JPEG/WebP/GIF, 8 MiB input/output, 512×512 pixels, up to 120 frames and 12 seconds. MIME disguises and malformed files are rejected. Processing concurrency and time are bounded; metadata is stripped.
 - Private S3-compatible storage adapter. The API controls reads; a hidden/deleted contribution no longer grants public access to its media. Processed database blobs remain the fallback when no bucket is configured. Existing browser copies cannot be recalled.
 - Media is immutable by ID; replacement requires a new upload ID. Successful upload responses contain metadata, not another copy of the image in the idempotency log.
+- New and pre-existing uploaded media in both permanent and Classic PostgreSQL paths stays private until moderators approve it. Three distinct authenticated open reports temporarily hide eligible contributions; clearing enough reports can release the temporary hold.
+- No image classifier is configured. Manual review may miss unsafe imagery, and canvas strokes or composites are not screened. Configure staffed moderator access and review every pending upload before opening registration; this does not certify child safety.
 - Server validates entity metadata, layer fields, permitted asset references, ownership and region restrictions.
 
 ### Advertising
@@ -32,7 +34,8 @@ Updated 2026-10-14. This document describes the current implementation; earlier 
 
 ### Moderation, history and reliability
 
-- Reports for an entity or the current 128×128 chunk; moderator queue, hide/unhide, report resolution/dismissal, 30-day publishing suspensions and reinstatement.
+- Reports for an entity or the current 128×128 chunk; moderator queue, three-reporter temporary entity holds, hide/unhide, report resolution/dismissal, 30-day publishing suspensions and reinstatement.
+- Permanent reports temporarily hide eligible artwork, approved media and chat after three distinct authenticated reporters. `/safety` also queues uploaded media for moderator preview and approval; profile cases require operator review.
 - Moderator-only chunk-version history and restoration. Restoring creates a new revision, preserving conflict protection.
 - Append-only moderation audit triggers; reasons required for every action. Operator role changes are also audited, with last-administrator protection.
 - Chunk history captures existing records at migration and subsequent accepted versions. Deleted chunks retain blank tombstones with increasing versions. Entity edits/deletions retain earlier metadata.
@@ -52,7 +55,7 @@ Updated 2026-10-14. This document describes the current implementation; earlier 
 
 ## Local verification
 
-Latest automated checks (2026-10-14): `pnpm check` passed (115 tests: 3 shared, 61 client, 51 server), including formatting, lint, TypeScript and the production build. The earlier 108-test run also included a local browser/API smoke check. The Phase 3 browser smoke could not be completed: the Windows browser helper stopped before reloading the local preview because it could not verify the active URL. `pnpm audit --prod` previously reported no known vulnerabilities after upgrading the transitive query parser for [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g) and [GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx). An advisory scan is not a penetration test or a guarantee of security.
+Latest automated checks (2026-10-14): `pnpm check` passed (115 tests: 3 shared, 61 client, 51 server), including formatting, lint, TypeScript and the production build. The server suite covers permanent and Classic media review, three-reporter temporary holds, and hold release. The earlier 108-test run also included a local browser/API smoke check. A current browser smoke could not be completed: the Windows browser helper stopped before reloading the local preview because it could not verify the active URL. `pnpm audit --prod` previously reported no known vulnerabilities after upgrading the transitive query parser for [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g) and [GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx). An advisory scan is not a penetration test or a guarantee of security.
 
 Run `pnpm check` for formatting, lint, tests and production build. Server tests use temporary embedded PostgreSQL by default and do not touch `server/db.json` or a hosted database. For native integration, supply `TEST_DATABASE_URL` pointing to a disposable localhost database whose name ends in `_test`; use a fresh database for each run.
 

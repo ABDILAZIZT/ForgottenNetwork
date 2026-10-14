@@ -78,6 +78,10 @@ Classic Studio remote mode connects the repository to versioned, idempotent shar
 
 Google display and rewarded ad integration is disabled by default. Production ad scripts require the visitor's saved Allow choice and an allowed IAB TCF event from a configured CMP. Local reward caps and gems remain device-only demos; Google rewarded web ads do not provide server-side verification. See [advertising setup](docs/AD_CONFIGURATION.md) and [trust and safety limits](docs/TRUST_AND_SAFETY.md).
 
+## Safety and uploads
+
+New image and GIF uploads stay private until a configured moderator approves them; without a moderator they remain pending. There is no visual classifier, and existing drawings/strokes are not screened. Three distinct authenticated open reports can temporarily hide eligible content for review. This is a local safety control, not a child-safety guarantee. See [the safety and accessibility implementation notes](docs/PHASE_4_SAFETY_ACCESSIBILITY.md).
+
 ## Rewards and collection
 
 The canvas includes a seven-day login streak, three date-seeded daily challenges (drawing, exploring, and placing creations), and 2–5 demo gems for each neighborhood first visited that day. Challenge rewards are 30–50 gems. These balances live in browser storage and are not account-backed or tamper-resistant. The 18-item Creator Collection is grouped into Brushes, Land, Creatures, and Cosmetics; its 75-coin daily grant and 1,500-coin cap use a separate local demo wallet. There is no checkout or cash value.
@@ -98,6 +102,7 @@ The canvas includes a seven-day login streak, three date-seeded daily challenges
 - [Legacy migration strategy](docs/MIGRATION_STRATEGY.md)
 - [World repository architecture](docs/REPOSITORY_ARCHITECTURE.md)
 - [Phase 4 shared HTTP persistence](docs/PHASE_4_IMPLEMENTATION.md)
+- [Phase 4 safety and accessibility](docs/PHASE_4_SAFETY_ACCESSIBILITY.md)
 - [Phase 5 PostgreSQL and authentication](docs/PHASE_5_IMPLEMENTATION.md)
 - [Phase 6 staging preparation](docs/PHASE_6_IMPLEMENTATION.md)
 - [Current launch readiness, operator commands and remaining gates](docs/LAUNCH_READINESS.md)

@@ -536,7 +536,7 @@ function createPostgresWorldApi({ pool, objectStorage = null }) {
     requireMember,
     route(async (req, res) => {
       const result = await pool.query(
-        `SELECT id, media_type, media_data, byte_size, storage_key, created_at, updated_at
+        `SELECT id, media_type, media_data, byte_size, storage_key, moderation_state, created_at, updated_at
          FROM repository_assets WHERE world_id = $1 AND owner_id=$2 AND verified=true ORDER BY updated_at DESC`,
         [req.params.worldId, req.actor.id],
       );
@@ -548,6 +548,8 @@ function createPostgresWorldApi({ pool, objectStorage = null }) {
             data: `data:${row.media_type};base64,${(row.storage_key ? await objectStorage.get(row.storage_key) : Buffer.from(row.media_data)).toString('base64')}`,
             byteSize: row.byte_size,
             savedAt: new Date(row.updated_at).getTime(),
+            moderationState: row.moderation_state,
+            pendingReview: row.moderation_state !== 'approved',
           })),
         ),
       });
@@ -558,13 +560,13 @@ function createPostgresWorldApi({ pool, objectStorage = null }) {
     '/worlds/:worldId/assets/:assetId',
     route(async (req, res) => {
       const result = await pool.query(
-        `SELECT id, media_type, media_data, byte_size, updated_at, storage_key
+        `SELECT id, media_type, media_data, byte_size, updated_at, storage_key, moderation_state
          FROM repository_assets a WHERE world_id = $1 AND id = $2 AND verified=true
-         AND (owner_id=$3 OR EXISTS (SELECT 1 FROM repository_entities e WHERE e.world_id=a.world_id
+         AND (owner_id=$3 OR (a.moderation_state='approved' AND EXISTS (SELECT 1 FROM repository_entities e WHERE e.world_id=a.world_id
            AND e.deleted_at IS NULL AND e.hidden_at IS NULL AND (
              e.state->>'spriteUrl' = 'asset:' || a.id OR
              e.state->'frames' @> jsonb_build_array('asset:' || a.id) OR
-             EXISTS(SELECT 1 FROM jsonb_array_elements(COALESCE(e.state->'layers','[]')) l WHERE l->>'url'='asset:' || a.id))))`,
+             EXISTS(SELECT 1 FROM jsonb_array_elements(COALESCE(e.state->'layers','[]')) l WHERE l->>'url'='asset:' || a.id)))))`,
         [req.params.worldId, req.params.assetId, req.actor?.id || null],
       );
       if (!result.rowCount) return sendError(res, 404, 'NOT_FOUND', 'Asset not found.');
@@ -576,6 +578,8 @@ function createPostgresWorldApi({ pool, objectStorage = null }) {
         data: `data:${row.media_type};base64,${(row.storage_key ? await objectStorage.get(row.storage_key) : Buffer.from(row.media_data)).toString('base64')}`,
         byteSize: row.byte_size,
         savedAt: new Date(row.updated_at).getTime(),
+        moderationState: row.moderation_state,
+        pendingReview: row.moderation_state !== 'approved',
       });
     }),
   );
@@ -645,6 +649,8 @@ function createPostgresWorldApi({ pool, objectStorage = null }) {
             type: parsed.type,
             byteSize: parsed.byteSize,
             savedAt: Date.now(),
+            pendingReview: true,
+            moderationState: 'pending',
           },
           operationId,
         };
@@ -663,7 +669,7 @@ function createPostgresWorldApi({ pool, objectStorage = null }) {
     }),
   );
 
-  router.use(createModerationApi({ pool }));
+  router.use(createModerationApi({ pool, objectStorage }));
   return router;
 }
 

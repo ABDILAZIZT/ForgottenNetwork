@@ -52,11 +52,18 @@ function assetReferences(state) {
 async function checkAssets(client, worldId, actorId, state) {
   for (const id of assetReferences(state)) {
     const result = await client.query(
-      'SELECT owner_id, verified FROM repository_assets WHERE world_id = $1 AND id = $2',
+      'SELECT owner_id, verified, moderation_state FROM repository_assets WHERE world_id = $1 AND id = $2',
       [worldId, id],
     );
     if (!result.rows[0]?.verified || result.rows[0].owner_id !== actorId) {
       throw new ApiProblem(403, 'FORBIDDEN', 'Only your own validated media can be placed.');
+    }
+    if (result.rows[0].moderation_state !== 'approved') {
+      throw new ApiProblem(
+        409,
+        'MEDIA_PENDING_REVIEW',
+        'Media must be approved by a moderator before it can be published.',
+      );
     }
   }
 }

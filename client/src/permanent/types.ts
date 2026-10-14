@@ -123,6 +123,8 @@ export interface Asset {
   height: number;
   url: string;
   mime?: string;
+  pendingReview?: boolean;
+  moderationState?: 'pending' | 'approved' | 'rejected';
 }
 export interface Blocked {
   cx: number;

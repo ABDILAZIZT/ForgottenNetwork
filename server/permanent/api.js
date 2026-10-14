@@ -284,7 +284,11 @@ function createPermanentCanvas({ filename, origins = [], pool } = {}) {
         );
       }
       if (processed.length > 8 * 1024 * 1024) throw fail('Processed image exceeds 8MB.');
-      res.status(201).json(get().addAsset(user, processed, mime, meta.width, meta.height));
+      res
+        .status(201)
+        .json(
+          get().addAsset(user, processed, mime, meta.width, meta.height, { pendingReview: true }),
+        );
     }),
   );
   router.get(

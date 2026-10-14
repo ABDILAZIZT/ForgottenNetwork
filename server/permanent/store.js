@@ -369,18 +369,22 @@ class CanvasStore {
       return { element: this.element(e.id), blocked: blocked.slice(0, 200), duplicate: false };
     });
   }
-  restore(id, user) {
+  restore(id, user, { moderator = false } = {}) {
     return this.transaction(() => {
       const removed = this.db.prepare('SELECT * FROM canvas_removed WHERE element_id=?').get(id);
       const art = this.row(this.db.prepare('SELECT * FROM canvas_elements WHERE id=?').get(id));
       if (!removed || !art) throw fail('Removed artwork not found.', 404);
-      if (
-        art.ownerId !== user.id ||
-        removed.actor_id !== user.id ||
-        removed.reason !== 'owner removal'
-      )
+      const ownerRestore =
+        art.ownerId === user.id &&
+        removed.actor_id === user.id &&
+        removed.reason === 'owner removal';
+      const automaticHoldRestore =
+        moderator &&
+        removed.actor_id === 'system:auto-hide' &&
+        removed.reason === 'automatic safety hold';
+      if (!ownerRestore && !automaticHoldRestore)
         throw fail('Only your own removals may be restored.', 403);
-      if (Date.now() - Date.parse(removed.removed_at) > 30 * 86400000)
+      if (ownerRestore && Date.now() - Date.parse(removed.removed_at) > 30 * 86400000)
         throw fail('Recovery window expired.', 410);
       for (const [x, y] of art.cells) {
         const owner = this.db
@@ -396,7 +400,7 @@ class CanvasStore {
       return art;
     });
   }
-  remove(input, user, { moderator = false } = {}) {
+  remove(input, user, { moderator = false, reason } = {}) {
     if (
       !input ||
       !/^[a-zA-Z0-9_-]{8,80}$/.test(input.id || '') ||
@@ -427,7 +431,7 @@ class CanvasStore {
       for (const art of arts)
         this.db
           .prepare('INSERT INTO canvas_removed VALUES(?,?,?,?)')
-          .run(art.id, user.id, now, moderator ? 'moderator removal' : 'owner removal');
+          .run(art.id, user.id, now, reason || (moderator ? 'moderator removal' : 'owner removal'));
       // Rebuild only this artist's claims from surviving history. Other identities are untouched.
       for (const ownerId of new Set(arts.map((a) => a.ownerId))) {
         this.db.prepare('DELETE FROM pixel_ownership WHERE owner_id=?').run(ownerId);
@@ -603,17 +607,31 @@ class CanvasStore {
     leaderboard.sort((a, b) => b.pixels - a.pixels);
     return { ...total, leaderboard, density, spotlight, challenge: this.challenge() };
   }
-  addAsset(user, buffer, mime, width, height) {
+  addAsset(user, buffer, mime, width, height, { pendingReview = false } = {}) {
     const id = randomUUID();
-    this.db
-      .prepare('INSERT INTO canvas_assets VALUES(?,?,?,?,?,?,?)')
-      .run(id, user.id, mime, buffer, width, height, new Date().toISOString());
-    return { id, width, height, mime, url: '/api/canvas/assets/' + id };
+    const createdAt = new Date().toISOString();
+    this.transaction(() => {
+      this.db
+        .prepare('INSERT INTO canvas_assets VALUES(?,?,?,?,?,?,?)')
+        .run(id, user.id, mime, buffer, width, height, createdAt);
+      if (pendingReview)
+        this.db
+          .prepare('INSERT INTO canvas_pending_media VALUES(?,?,?)')
+          .run(id, user.id, createdAt);
+    });
+    return { id, width, height, mime, url: '/api/canvas/assets/' + id, pendingReview };
   }
   asset(id) {
     return this.db
       .prepare(
-        'SELECT * FROM canvas_assets WHERE id=? AND id NOT IN (SELECT asset_id FROM canvas_hidden_media)',
+        'SELECT * FROM canvas_assets WHERE id=? AND id NOT IN (SELECT asset_id FROM canvas_hidden_media) AND id NOT IN (SELECT asset_id FROM canvas_pending_media)',
+      )
+      .get(id);
+  }
+  pendingMedia(id) {
+    return this.db
+      .prepare(
+        'SELECT a.*,p.created_at AS submitted_at,u.name AS owner_name FROM canvas_pending_media p JOIN canvas_assets a ON a.id=p.asset_id JOIN canvas_users u ON u.id=p.owner_id WHERE a.id=?',
       )
       .get(id);
   }

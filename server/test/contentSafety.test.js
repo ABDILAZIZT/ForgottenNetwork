@@ -3,9 +3,26 @@ const assert = require('node:assert/strict');
 const { assertSafeText, inspectPublicText } = require('../contentSafety');
 const { CanvasStore, normalizeElement } = require('../permanent/store');
 test('public text filter catches basic evasion without matching innocent substrings', () => {
-  for (const text of ['ＦＵＣＫ', 'f\u200buck', 'sh1t', 'كسمك', 'kill yourself'])
+  for (const text of [
+    'ＦＵＣＫ',
+    'f\u200buck',
+    'sh1t',
+    'd1ck',
+    'كسمك',
+    'شـرموطة',
+    'قَحْبَة',
+    'إِبَاحِيَّة',
+    'kill yourself',
+  ])
     assert.throws(() => assertSafeText(text), { status: 422 });
-  for (const text of ['A peaceful world', 'Scunthorpe', 'مرحبا بالعالم', 'classic'])
+  for (const text of [
+    'A peaceful world',
+    'Scunthorpe',
+    'class',
+    'مرحبا بالعالم',
+    'كساد السوق',
+    'classic',
+  ])
     assert.doesNotThrow(() => assertSafeText(text));
   assert.throws(() => inspectPublicText({ state: { layers: [{ name: 'porn' }] } }), {
     status: 422,

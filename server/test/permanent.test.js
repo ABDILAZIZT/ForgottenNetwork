@@ -249,6 +249,12 @@ test('HTTP and WebSocket integration: concurrent claims, presence, live art, cha
   };
   const alice = (await request('/identity', null, { name: 'Alice', color: '#22d3ee' })).body;
   const bob = (await request('/identity', null, { name: 'Bob', color: '#fb7185' })).body;
+  const previousModerators = process.env.CANVAS_MODERATOR_IDS;
+  process.env.CANVAS_MODERATOR_IDS = alice.user.id;
+  t.after(() => {
+    if (previousModerators === undefined) delete process.env.CANVAS_MODERATOR_IDS;
+    else process.env.CANVAS_MODERATOR_IDS = previousModerators;
+  });
   assert.equal((await request('/elements', null, mark())).status, 401);
   const a = new WebSocket(base.replace('http:', 'ws:') + '/api/canvas/live', {
     origin: 'http://canvas.test',
@@ -318,6 +324,21 @@ test('HTTP and WebSocket integration: concurrent claims, presence, live art, cha
   const uploaded = await request('/assets', alice.token, { data: png.toString('base64') });
   assert.equal(uploaded.status, 201);
   assert.equal(uploaded.body.mime, 'image/png');
+  assert.equal(uploaded.body.pendingReview, true);
+  assert.equal((await fetch(base + uploaded.body.url)).status, 404);
+  assert.equal((await request('/avatar', alice.token, { assetId: uploaded.body.id })).status, 400);
+  const queue = await request('/moderation/queue', alice.token);
+  assert.equal(queue.body.pendingMedia[0].id, uploaded.body.id);
+  const mediaPreview = await fetch(base + '/api/canvas/moderation/media/' + uploaded.body.id, {
+    headers: { authorization: 'Bearer ' + alice.token },
+  });
+  assert.equal(mediaPreview.status, 200);
+  assert.equal(mediaPreview.headers.get('cache-control'), 'no-store');
+  assert.equal(
+    (await request('/moderation/media/' + uploaded.body.id, alice.token, { action: 'approve' }))
+      .body.status,
+    'approved',
+  );
   const bytes = await fetch(base + uploaded.body.url);
   assert.equal(bytes.headers.get('content-type'), 'image/png');
   assert.equal((await sharp(Buffer.from(await bytes.arrayBuffer())).metadata()).width, 16);
@@ -328,6 +349,18 @@ test('HTTP and WebSocket integration: concurrent claims, presence, live art, cha
   );
   assert.equal((await request('/avatar', alice.token, { assetId: uploaded.body.id })).status, 200);
   assert.equal((await request('/avatar', bob.token, { assetId: uploaded.body.id })).status, 400);
+  const rejectedUpload = await request('/assets', alice.token, { data: png.toString('base64') });
+  assert.equal(rejectedUpload.body.pendingReview, true);
+  assert.equal(
+    (
+      await request('/moderation/media/' + rejectedUpload.body.id, alice.token, {
+        action: 'reject',
+      })
+    ).body.status,
+    'rejected',
+  );
+  assert.equal((await fetch(base + rejectedUpload.body.url)).status, 404);
+  assert.equal((await request('/safety', alice.token)).body.mediaReviews[0].action, 'reject');
   assert.equal(
     (await fetch(base + '/api/canvas/elements/' + accepted.id, { method: 'DELETE' })).status,
     404,

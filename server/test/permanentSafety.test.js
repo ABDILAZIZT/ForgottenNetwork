@@ -122,4 +122,54 @@ test('reports and deletion requests are authenticated, private and auditable; mo
     200,
   );
   assert.equal((await request('/assets/' + asset.id)).status, 404);
+  const reportedArt = store.place(
+    {
+      id: randomUUID(),
+      type: 'rectangle',
+      x: 14000,
+      y: 14000,
+      width: 16,
+      height: 16,
+      content: { color: '#ffffff', size: 4, opacity: 1 },
+    },
+    owner.user,
+  ).element;
+  const reporters = [
+    owner,
+    reviewer,
+    ...Array.from({ length: 2 }, (_, i) =>
+      store.register({ name: 'Visitor ' + i, color: '#ffffff' }),
+    ),
+  ];
+  const reports = [];
+  for (const reporter of reporters.slice(0, 3)) {
+    reports.push(
+      await request('/reports', reporter.token, {
+        targetType: 'artwork',
+        targetId: reportedArt.id,
+        category: 'other',
+        reason: 'Please review this contribution.',
+      }),
+    );
+  }
+  assert.equal(reports[0].data.automaticHidden, false);
+  assert.equal(reports[1].data.automaticHidden, false);
+  assert.equal(reports[2].data.automaticHidden, true);
+  assert.equal(store.element(reportedArt.id), null);
+  assert.equal(
+    (await request('/moderation/queue', reviewer.token)).data.reports.find(
+      (entry) => entry.id === reports[2].data.id,
+    ).automatic_hidden,
+    1,
+  );
+  assert.equal(
+    (
+      await request('/moderation/reports/' + reports[2].data.id, reviewer.token, {
+        action: 'dismiss',
+      })
+    ).data.status,
+    'dismissed',
+  );
+  assert.equal(store.element(reportedArt.id).id, reportedArt.id);
+  assert.equal(store.db.prepare('SELECT count(*) AS n FROM canvas_auto_hidden').get().n, 0);
 });

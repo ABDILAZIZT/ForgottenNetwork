@@ -12,15 +12,15 @@ const pages: Record<string, { title: string; paragraphs: string[] }> = {
     paragraphs: [
       RULES_SUMMARY,
       'These rules apply to drawings, uploaded images and GIFs, avatars, stickers, names, descriptions, artwork text and chat. Pornography, sexual solicitation, sexual harassment and any sexual content involving minors are prohibited. Do not target people with abuse, share private identifying information, make credible threats or encourage violence.',
-      'Server text filters block some prohibited words and common evasions. They can miss content or make mistakes. Images and canvas strokes are not automatically scanned for sexual or violent content. File validation checks format and size, not meaning. Reports need human review; response times are not guaranteed. Do not assume all visible content is suitable for children.',
-      'Use Safety & privacy to report an artwork, media file, chat message or profile by its ID. Reports are stored for review. Moderators can hide artwork, media and chat and dismiss reports, with an audit record. Profile and complex cases require operator review. You can view the status of your own reports.',
+      'Server text filters block some English and Arabic prohibited words and common evasions. They can miss content or make mistakes. New image and GIF uploads are held back from public use until a moderator reviews them; approved uploads can still contain content the reviewer misses. Existing artwork, images and canvas strokes are not automatically scanned for sexual or violent content. File validation checks format and size, not meaning. Reports need human review; response times are not guaranteed. Do not assume all visible content is suitable for children.',
+      'Use Safety & privacy to report an artwork, media file, chat message or profile by its ID. Reports are stored for review. Three distinct open reports temporarily hide eligible artwork, approved media and chat while a moderator reviews them; dismissing a report can release that hold when fewer than three remain. Moderators can hide artwork, media and chat and dismiss reports, with an audit record. Profile and complex cases require operator review. You can view the status of your own reports.',
     ],
   },
   '/privacy': {
     title: 'Privacy Policy',
     paragraphs: [
       'The permanent canvas stores a random artist ID, chosen public name and color, optional uploaded avatar, hashed recovery secret, creation/last visit timestamps, and activity counters used for streaks and rewards. Your recovery secret is stored on your device; anyone with it can act as you. Do not put your real name, contact details or other private information in public content.',
-      'Published artwork, creator attribution, uploads, reactions and chat are public. Live presence shares your artist name, color, viewport/cursor and drawing status with connected visitors. Server infrastructure receives IP addresses and request information for delivery, security and rate limits. We do not intentionally request birth dates, addresses, telephone numbers or marketing email.',
+      'Published artwork, creator attribution, approved uploads, reactions and chat are public. New media uploads remain private from ordinary visitors until a moderator approves them. Reviewers configured by the operator can inspect pending uploads. Live presence shares your artist name, color, viewport/cursor and drawing status with connected visitors. Server infrastructure receives IP addresses and request information for delivery, security and rate limits. We do not intentionally request birth dates, addresses, telephone numbers or marketing email.',
       'Drafts, pending publications, identity credentials, preferences, demo balances and local Classic content use browser storage. Draft mode does not publish saved drafts automatically. Queued publications are different from drafts and retry after connectivity returns. Clearing browser data can lose access and unpublished work; save your recovery secret securely.',
       'Classic remote sessions use an essential session cookie and may use a configured OpenID Connect provider. The configured hosting, database and object storage providers process data needed to run the service. No third-party AI image moderation transmission is implemented. Advertising remains disabled unless the operator configures a publisher account and ad units. If enabled, Google ad technology may process device and ad-request data; optional ad scripts load only after an affirmative device choice and a successful consent check.',
       'Removing permanent artwork hides it from active views and releases its unused cells. Original artwork and attribution remain in server history; owner removals can be restored for 30 days if space is available. History, media, reports and security audit records currently have no automatic purge schedule. Backups may retain earlier records. Removal is not immediate erasure of all copies.',
@@ -60,13 +60,25 @@ type Report = {
   category: string;
   status: string;
   reason?: string;
+  automatic_hidden?: boolean;
 };
+type PendingMedia = {
+  id: string;
+  mime: string;
+  width: number;
+  height: number;
+  owner_name: string;
+  created_at: string;
+};
+type PendingUpload = Pick<PendingMedia, 'id' | 'mime' | 'width' | 'height' | 'created_at'>;
 type Safety = {
   rulesVersion: string;
   accepted: boolean;
   moderator: boolean;
   deletionRequest: { id: string; status: string } | null;
   reports: Report[];
+  pendingUploads: PendingUpload[];
+  mediaReviews: Array<{ id: string; action: 'approve' | 'reject'; created_at: string }>;
 };
 export function PolicyLinks() {
   return (
@@ -92,6 +104,7 @@ function SafetyCenter() {
   const [queue, setQueue] = useState<{
     reports: Report[];
     deletionRequests: { id: string; user_id: string; status: string }[];
+    pendingMedia: PendingMedia[];
   } | null>(null);
   const [busy, setBusy] = useState(false);
   const refresh = async () => setState(await api<Safety>('/safety', token));
@@ -122,8 +135,9 @@ function SafetyCenter() {
   return (
     <>
       <p>
-        Reports need human review. There is no automatic image safety scan or guaranteed response
-        time. Do not include private information in reports.
+        Reports need human review. Three distinct open reports can temporarily hide eligible content
+        until review; this is not an automatic image safety scan. New media uploads remain private
+        until a moderator approves them. Do not include private information in reports.
       </p>
       <p role="status">{notice}</p>
       <form
@@ -186,9 +200,36 @@ function SafetyCenter() {
       <h2>Your reports</h2>
       {state?.reports.map((r) => (
         <p key={r.id}>
-          {r.target_type} {r.target_id}: {r.status} (reference {r.id})
+          {r.target_type} {r.target_id}: {r.status}
+          {r.automatic_hidden ? ' — automatically hidden for review' : ''} (reference {r.id})
         </p>
       ))}
+      <h2>My media awaiting review</h2>
+      {state?.pendingUploads.length ? (
+        <ul>
+          {state.pendingUploads.map((upload) => (
+            <li key={upload.id}>
+              {upload.mime} · {upload.width} × {upload.height} · submitted{' '}
+              {new Date(upload.created_at).toLocaleString()} · reference {upload.id}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>No uploads are waiting for review.</p>
+      )}
+      <h2>Recent media review decisions</h2>
+      {state?.mediaReviews.length ? (
+        <ul>
+          {state.mediaReviews.map((review, index) => (
+            <li key={`${review.id}:${review.action}:${index}`}>
+              {review.action === 'approve' ? 'Approved' : 'Rejected'} · {review.id} ·{' '}
+              {new Date(review.created_at).toLocaleString()}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>No review decisions are recorded yet.</p>
+      )}
       <h2>Request deletion of my identity data</h2>
       <p>
         This submits an authenticated request for operator review. It does not erase your account or
@@ -234,6 +275,11 @@ function SafetyCenter() {
                 {r.target_type}: {r.target_id} — {r.category}
               </p>
               <p>{r.reason}</p>
+              {r.automatic_hidden && (
+                <p role="status">
+                  Automatically hidden while at least three distinct artists have open reports.
+                </p>
+              )}
               {['hide', 'dismiss'].map((action) => (
                 <button
                   key={action}
@@ -251,6 +297,45 @@ function SafetyCenter() {
               ))}
             </article>
           ))}
+          <h3>New media held for review</h3>
+          {queue?.pendingMedia.length ? (
+            queue.pendingMedia.map((media) => (
+              <article key={media.id}>
+                <h4>Upload from {media.owner_name}</h4>
+                <p>
+                  {media.mime} · {media.width} × {media.height} ·{' '}
+                  {new Date(media.created_at).toLocaleString()}
+                </p>
+                <ModerationMediaPreview media={media} token={token} />
+                <button
+                  disabled={busy}
+                  onClick={() => {
+                    if (confirm('Approve this image for public display?'))
+                      void run(async () => {
+                        await api('/moderation/media/' + media.id, token, { action: 'approve' });
+                        setQueue(await api('/moderation/queue', token));
+                      });
+                  }}
+                >
+                  Approve for public use
+                </button>
+                <button
+                  disabled={busy}
+                  onClick={() => {
+                    if (confirm('Reject this upload and keep it hidden?'))
+                      void run(async () => {
+                        await api('/moderation/media/' + media.id, token, { action: 'reject' });
+                        setQueue(await api('/moderation/queue', token));
+                      });
+                  }}
+                >
+                  Reject and keep hidden
+                </button>
+              </article>
+            ))
+          ) : (
+            <p>No media waiting for review.</p>
+          )}
           <h3>Pending data deletion requests</h3>
           {queue?.deletionRequests.map((r) => (
             <p key={r.id}>
@@ -260,6 +345,47 @@ function SafetyCenter() {
         </section>
       )}
     </>
+  );
+}
+function ModerationMediaPreview({ media, token }: { media: PendingMedia; token: string }) {
+  const [src, setSrc] = useState('');
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let url = '';
+    const controller = new AbortController();
+    void fetch('/api/canvas/moderation/media/' + encodeURIComponent(media.id), {
+      headers: { Authorization: 'Bearer ' + token },
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Preview is not available.');
+        url = URL.createObjectURL(await response.blob());
+        setSrc(url);
+      })
+      .catch((reason: unknown) => {
+        if (!controller.signal.aborted)
+          setError(reason instanceof Error ? reason.message : 'Preview is not available.');
+      });
+    return () => {
+      controller.abort();
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [media.id, token]);
+  return error ? (
+    <p role="status">{error}</p>
+  ) : src ? (
+    <img
+      src={src}
+      alt={`Pending ${media.mime} upload from ${media.owner_name}`}
+      style={{
+        display: 'block',
+        maxWidth: 'min(100%, 512px)',
+        maxHeight: 512,
+        objectFit: 'contain',
+      }}
+    />
+  ) : (
+    <p role="status">Loading private review preview…</p>
   );
 }
 export function PolicyPage() {
