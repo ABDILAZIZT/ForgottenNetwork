@@ -12,8 +12,14 @@ import {
 import CreativeStudio from './CreativeStudio';
 import AdSlot from './AdSlot';
 
-export default function MarketCatalog({ showAds }: { showAds: boolean }) {
-  const [category, setCategory] = useState<MarketCategory | 'Bundles'>('Tools');
+export default function MarketCatalog({
+  showAds,
+  position,
+}: {
+  showAds: boolean;
+  position?: { x: number; y: number };
+}) {
+  const [category, setCategory] = useState<MarketCategory | 'Bundles'>('Brushes');
   const [ledger, setLedger] = useState(readMarket);
   const [pending, setPending] = useState<MarketItem | null>(null);
   const [notice, setNotice] = useState('');
@@ -22,7 +28,11 @@ export default function MarketCatalog({ showAds }: { showAds: boolean }) {
   useEffect(() => {
     const refresh = () => setLedger(readMarket());
     window.addEventListener('storage', refresh);
-    return () => window.removeEventListener('storage', refresh);
+    window.addEventListener('fn-market-change', refresh);
+    return () => {
+      window.removeEventListener('storage', refresh);
+      window.removeEventListener('fn-market-change', refresh);
+    };
   }, []);
   useEffect(() => {
     if (!celebrate) return;
@@ -60,12 +70,12 @@ export default function MarketCatalog({ showAds }: { showAds: boolean }) {
           </button>
         </div>
         <small>
-          Separate Studio demo wallet. No cash value. Free grants: once per 24 hours, up to 3000
-          coins. Purchases and effects stay on this device.
+          Separate Studio demo wallet. No cash value. Free grants: 75 coins once per 24 hours, up to
+          a 1,500-coin cap. Purchases and effects stay on this device.
         </small>
       </div>
       <div className="fn-market-filters" aria-label="Collection categories">
-        {(['Tools', 'Effects', 'Premium', 'Bundles'] as const).map((label, i) => (
+        {(['Brushes', 'Land', 'Creatures', 'Cosmetics', 'Bundles'] as const).map((label, i) => (
           <button
             key={label}
             aria-pressed={category === label}
@@ -74,7 +84,7 @@ export default function MarketCatalog({ showAds }: { showAds: boolean }) {
               setPending(null);
             }}
           >
-            {['🎨', '✨', '👑', '🎁'][i]} {label}
+            {['🎨', '🧭', '🐾', '✨', '🎁'][i]} {label}
           </button>
         ))}
         <button onClick={() => setStudio(!studio)} aria-expanded={studio}>
@@ -90,10 +100,10 @@ export default function MarketCatalog({ showAds }: { showAds: boolean }) {
           <p>{pending.description}</p>
           <button
             onClick={() => {
-              const result = purchaseMarketItem(pending.id);
+              const result = purchaseMarketItem(pending.id, position);
               setNotice(
                 result === 'Purchased'
-                  ? `Just purchased: ${pending.name}. Open Studio for tools; effects are in Expedition preferences.`
+                  ? `Just purchased: ${pending.name}. Open Studio for tools; cosmetics are in Expedition preferences.`
                   : result,
               );
               setCelebrate(result === 'Purchased');
@@ -119,29 +129,46 @@ export default function MarketCatalog({ showAds }: { showAds: boolean }) {
           MARKET_ITEMS.filter((item) => item.category === category).map((item) => (
             <article className={`fn-market-card ${item.rarity}`} key={item.id}>
               <span className="fn-rarity">
-                {item.rarity} / {ledger.owned.includes(item.id) ? 'OWNED' : 'NEW'}
+                {item.rarity} /{' '}
+                {!item.repeatable && ledger.owned.includes(item.id) ? 'OWNED' : 'NEW'}
               </span>
               <div className={`fn-item-art ${item.id}`} aria-hidden="true">
-                {item.category === 'Tools' ? '✎' : item.category === 'Effects' ? '✧' : '♔'}
+                {item.category === 'Brushes'
+                  ? '✎'
+                  : item.category === 'Land'
+                    ? '⌖'
+                    : item.category === 'Creatures'
+                      ? '🐾'
+                      : '✧'}
               </div>
               <h3>{item.name}</h3>
               <p>{item.description}</p>
               <strong>
-                {item.cost} coins <small> / {item.price} planned</small>
+                {item.cost} coins{' '}
+                {item.price === 'Demo only' ? (
+                  <small> / local demo</small>
+                ) : (
+                  <small> / {item.price} planned</small>
+                )}
               </strong>
               <button
                 disabled={
-                  item.previewOnly || ledger.owned.includes(item.id) || ledger.coins < item.cost
+                  item.previewOnly ||
+                  (!item.repeatable && ledger.owned.includes(item.id)) ||
+                  ledger.coins < item.cost ||
+                  (item.requiresLocation && !position)
                 }
                 onClick={() => setPending(item)}
               >
                 {item.previewOnly
                   ? 'Feature coming soon'
-                  : ledger.owned.includes(item.id)
-                    ? 'Owned'
-                    : ledger.coins < item.cost
-                      ? 'Not enough coins'
-                      : 'Buy with demo coins'}
+                  : item.requiresLocation && !position
+                    ? 'Open from the canvas'
+                    : !item.repeatable && ledger.owned.includes(item.id)
+                      ? 'Owned'
+                      : ledger.coins < item.cost
+                        ? 'Not enough coins'
+                        : 'Buy with demo coins'}
               </button>
               <button disabled>Coming soon — Pay with Card</button>
             </article>
@@ -170,6 +197,21 @@ export default function MarketCatalog({ showAds }: { showAds: boolean }) {
           </>
         )}
       </div>
+      <section className="fn-market-history" aria-label="Recent collection activity">
+        <h3>Recent collection activity</h3>
+        {ledger.transactions.length ? (
+          <ul>
+            {ledger.transactions
+              .slice(-5)
+              .reverse()
+              .map((transaction, index) => (
+                <li key={`${transaction}-${index}`}>{transaction}</li>
+              ))}
+          </ul>
+        ) : (
+          <p>Purchases and free coin grants on this device will appear here.</p>
+        )}
+      </section>
     </section>
   );
 }

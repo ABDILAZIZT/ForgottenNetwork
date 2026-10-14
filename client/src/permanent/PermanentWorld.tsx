@@ -1106,6 +1106,7 @@ export default function PermanentWorld() {
       <StudioUtilities
         open={utilitiesOpen}
         onClose={() => setUtilitiesOpen(false)}
+        hidden={welcome}
         token={session?.token}
         engine={engine.current}
         onMedia={(file) => void uploadMedia(file)}

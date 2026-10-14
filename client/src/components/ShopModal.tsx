@@ -23,6 +23,7 @@ import { isString, readArray } from '../economy';
 import { useModal } from './useModal';
 import MarketCatalog from './MarketCatalog';
 import AdSlot from './AdSlot';
+import { rewardedAdsConfigured } from '../ads';
 
 type ShopTab = 'subscriptions' | 'bundles' | 'items' | 'rewards';
 
@@ -38,6 +39,8 @@ interface Props {
   streakCount: number;
   adsWatchedToday: number;
   initialTab?: ShopTab;
+  worldPosition?: { x: number; y: number };
+  onWatchAd?: () => void;
 }
 
 const tiers: Array<{
@@ -95,34 +98,20 @@ const featureRows = [
   ['Optional rewarded ads', 'Up to 10/day', 'Up to 15/day', 'Ad-free'],
 ];
 
-const bundles = [
+const bundles: Array<{
+  name: string;
+  gems: number;
+  price: string;
+  note: string;
+  badge?: string;
+  vipOnly?: boolean;
+}> = [
   {
-    name: 'Spark',
-    gems: 100,
-    price: '$0.99',
-    note: 'Dip your toes in. One spark to light your first creation.',
-  },
-  {
-    name: 'Artist Bundle',
-    gems: 650,
-    price: '$4.99',
-    badge: 'BESTSELLER',
-    note: 'A week of progress in one clean jump, with 50 bonus gems tucked in.',
-  },
-  {
-    name: 'Creator Pack',
-    gems: 1800,
-    price: '$11.99',
-    badge: 'BEST VALUE',
-    note: 'Enough fuel for dedicated builders who keep coming back.',
-  },
-  {
-    name: 'Legend Hoard',
-    gems: 5000,
-    price: '$29.99',
-    badge: 'VIP EXCLUSIVE',
-    note: 'Go all-in. Build empires. Leave your mark on the Forgotten Network forever.',
-    vipOnly: true,
+    name: 'Daily Explorer Cache',
+    gems: 75,
+    price: 'Free demo',
+    note: 'A small daily allowance for trying the local demo shop. No payment is collected.',
+    vipOnly: false,
   },
 ];
 
@@ -210,6 +199,8 @@ export default function ShopModal({
   streakCount,
   adsWatchedToday,
   initialTab = 'subscriptions',
+  worldPosition,
+  onWatchAd,
 }: Props) {
   const [activeTab, setActiveTab] = useState<ShopTab>(initialTab);
   const [collection, setCollection] = useState(false);
@@ -237,7 +228,7 @@ export default function ShopModal({
 
   const buyBundle = (amount: number, label: string) => {
     onAddGems(amount);
-    notify(`${label}: requested up to 3,000 demo gems. One grant per day, 100,000 balance cap.`);
+    notify(`${label}: requested 75 free demo gems. One grant per day, 100,000 balance cap.`);
   };
 
   const activateTier = (tier: SubscriptionTier) => {
@@ -318,7 +309,9 @@ export default function ShopModal({
           >
             🎨 {collection ? 'Hide' : 'Explore'} Creator Collection & Studio
           </button>
-          {collection && <MarketCatalog showAds={subscriptionTier !== 'vip'} />}
+          {collection && (
+            <MarketCatalog showAds={subscriptionTier !== 'vip'} position={worldPosition} />
+          )}
           {activeTab === 'subscriptions' && (
             <>
               <p>
@@ -419,46 +412,56 @@ export default function ShopModal({
           )}
 
           {activeTab === 'items' && (
-            <div className="fn-items-grid">
-              {GEM_SHOP_ITEMS.filter((item) =>
-                ['chunk_visitor_map', 'teleport_beacon', 'land_license'].includes(item.id),
-              ).map((item, index) => {
-                const owned = ownedItems.includes(item.id) && !item.repeatable;
-                const disabled = owned || userGems < item.cost;
-                return [
-                  <div key={item.id} className="item-box">
-                    <div className="item-icon">{item.icon}</div>
-                    <div className="item-title-row">
-                      <h4>{item.name}</h4>
-                      {owned && <span className="owned-badge">Owned</span>}
-                    </div>
-                    <p>{item.description}</p>
-                    <small>{item.effect}</small>
-                    <button
-                      className="buy-btn-sm"
-                      disabled={disabled}
-                      onClick={() => onPurchaseItem(item.id, item.cost)}
-                    >
-                      {owned
-                        ? 'Owned'
-                        : userGems >= item.cost
-                          ? `${item.cost} gems`
-                          : 'Not enough gems'}
-                    </button>
-                  </div>,
-                  ...(index === 0 && subscriptionTier !== 'vip'
-                    ? [
-                        <AdSlot
-                          key="ad-slot-marketplace-feed"
-                          slotId="ad-slot-marketplace-feed"
-                          size="rectangle"
-                          position="marketplace-feed"
-                        />,
-                      ]
-                    : []),
-                ];
-              })}
-            </div>
+            <>
+              <div className="fn-items-grid">
+                {GEM_SHOP_ITEMS.map((item, index) => {
+                  const owned = ownedItems.includes(item.id) && !item.repeatable;
+                  const disabled = owned || userGems < item.cost;
+                  return [
+                    <div key={item.id} className="item-box">
+                      <div className="item-icon">{item.icon}</div>
+                      <div className="item-title-row">
+                        <h4>{item.name}</h4>
+                        {owned && <span className="owned-badge">Owned</span>}
+                      </div>
+                      <p>{item.description}</p>
+                      <small>{item.effect}</small>
+                      <button
+                        className="buy-btn-sm"
+                        disabled={disabled}
+                        onClick={() => onPurchaseItem(item.id, item.cost)}
+                      >
+                        {owned
+                          ? 'Owned'
+                          : userGems >= item.cost
+                            ? `${item.cost} gems`
+                            : 'Not enough gems'}
+                      </button>
+                    </div>,
+                    ...(index === 0 && subscriptionTier !== 'vip'
+                      ? [
+                          <AdSlot
+                            key="ad-slot-marketplace-feed"
+                            slotId="ad-slot-marketplace-feed"
+                            size="rectangle"
+                            position="marketplace-feed"
+                          />,
+                        ]
+                      : []),
+                  ];
+                })}
+              </div>
+              {subscriptionTier !== 'vip' &&
+                onWatchAd &&
+                (import.meta.env.DEV || rewardedAdsConfigured()) &&
+                GEM_SHOP_ITEMS.some(
+                  (item) => userGems < item.cost && !ownedItems.includes(item.id),
+                ) && (
+                  <button className="buy-btn fn-low-balance-cta" onClick={onWatchAd}>
+                    Not enough gems? Watch an optional rewarded ad for demo gems.
+                  </button>
+                )}
+            </>
           )}
 
           {activeTab === 'rewards' && (

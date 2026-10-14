@@ -5,6 +5,8 @@ import {
   dailyCount,
   dailyReward,
   effectiveStreak,
+  explorationGemReward,
+  grantExplorationGems,
   ownedItems,
   readBeacons,
   readClaims,
@@ -78,10 +80,10 @@ describe('persisted economy', () => {
 
   it('cycles weekly rewards and doubles them for VIP', () => {
     expect(Array.from({ length: 7 }, (_, day) => dailyReward('free', day))).toEqual([
-      25, 30, 50, 30, 35, 40, 100,
+      40, 45, 50, 45, 55, 60, 100,
     ]);
     expect(dailyReward('vip', 6)).toBe(200);
-    expect(dailyReward('free', 7)).toBe(25);
+    expect(dailyReward('free', 7)).toBe(40);
     expect(dailyReward('vip', 13)).toBe(200);
   });
 
@@ -91,6 +93,17 @@ describe('persisted economy', () => {
     expect(brushLimit('free', 1000)).toBe(4);
     expect(brushLimit('artist', 2000)).toBe(24);
     expect(brushLimit('vip', 2000)).toBe(24);
+  });
+
+  it('adds 2–5 local demo gems for each first visit to a daily neighborhood', () => {
+    expect([0, 0.25, 0.5, 0.999].map((value) => explorationGemReward(() => value))).toEqual([
+      2, 3, 4, 5,
+    ]);
+    localStorage.setItem('fn_user_gems', '99999');
+    expect(grantExplorationGems(5)).toBe(true);
+    expect(readNumber('fn_user_gems')).toBe(100000);
+    expect(grantExplorationGems(5)).toBe(false);
+    expect(grantExplorationGems(1)).toBe(false);
   });
 
   it('rejects malformed and expired claims and bookmarks', () => {

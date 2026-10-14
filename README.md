@@ -78,6 +78,10 @@ Classic Studio remote mode connects the repository to versioned, idempotent shar
 
 Google display and rewarded ad integration is disabled by default. Production ad scripts require the visitor's saved Allow choice and an allowed IAB TCF event from a configured CMP. Local reward caps and gems remain device-only demos; Google rewarded web ads do not provide server-side verification. See [advertising setup](docs/AD_CONFIGURATION.md) and [trust and safety limits](docs/TRUST_AND_SAFETY.md).
 
+## Rewards and collection
+
+The canvas includes a seven-day login streak, three date-seeded daily challenges (drawing, exploring, and placing creations), and 2–5 demo gems for each neighborhood first visited that day. Challenge rewards are 30–50 gems. These balances live in browser storage and are not account-backed or tamper-resistant. The 18-item Creator Collection is grouped into Brushes, Land, Creatures, and Cosmetics; its 75-coin daily grant and 1,500-coin cap use a separate local demo wallet. There is no checkout or cash value.
+
 ## Documentation
 
 - [Permanent canvas: operation, guarantees, backup and recovery](docs/PERMANENT_CANVAS.md)
@@ -98,5 +102,6 @@ Google display and rewarded ad integration is disabled by default. Production ad
 - [Phase 6 staging preparation](docs/PHASE_6_IMPLEMENTATION.md)
 - [Current launch readiness, operator commands and remaining gates](docs/LAUNCH_READINESS.md)
 - [Advertising configuration and consent gates](docs/AD_CONFIGURATION.md)
+- [Phase 3 economy and daily challenges](docs/PHASE_3_IMPLEMENTATION.md)
 - [Trust, safety and privacy audit](docs/TRUST_AND_SAFETY.md)
 - [Phase 1 audit and environment notes](docs/PHASE_1_AUDIT.md)

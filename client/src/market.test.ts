@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { purchaseMarketItem, readMarket, topUpMarketDemo } from './economy';
+import {
+  MARKET_ITEMS,
+  purchaseMarketItem,
+  readBeacons,
+  readMarket,
+  topUpMarketDemo,
+} from './economy';
 import { readExploration, recordExploration } from './exploration';
 beforeEach(() => {
   const values = new Map<string, string>();
@@ -14,7 +20,13 @@ afterEach(() => {
 });
 it('deducts the catalog price once and rejects duplicate and unaffordable purchases', () => {
   expect(purchaseMarketItem('rainbow_brush')).toBe('Purchased');
-  expect(readMarket()).toEqual({ coins: 0, owned: ['rainbow_brush'], nextGrantAt: 0 });
+  expect(readMarket()).toMatchObject({
+    coins: 0,
+    owned: ['rainbow_brush'],
+    nextGrantAt: 0,
+    beacons: [],
+  });
+  expect(readMarket().transactions).toHaveLength(1);
   expect(purchaseMarketItem('rainbow_brush')).toBe('Already owned.');
   expect(purchaseMarketItem('glow_pen')).toBe('Not enough demo coins.');
   expect(readMarket().coins).toBe(0);
@@ -23,7 +35,7 @@ it('does not sell unimplemented server features or unknown products', () => {
   topUpMarketDemo();
   expect(purchaseMarketItem('expanded_canvas')).toBe('This feature is a preview.');
   expect(purchaseMarketItem('forged-product')).toBe('This feature is a preview.');
-  expect(readMarket().coins).toBe(1650);
+  expect(readMarket().coins).toBe(225);
 });
 it('does not report success when persistence fails', () => {
   vi.stubGlobal('localStorage', {
@@ -46,14 +58,39 @@ it('bounds activity and deduplicates replayed placements', () => {
 
 it('limits repeated grants across reloads and purchases without reducing legacy balances', () => {
   topUpMarketDemo(1000);
-  expect(readMarket().coins).toBe(1650);
+  expect(readMarket().coins).toBe(225);
   expect(topUpMarketDemo(1001)).toContain('24 hours');
   purchaseMarketItem('rainbow_brush');
   expect(topUpMarketDemo(1002)).toContain('24 hours');
   topUpMarketDemo(86401000);
-  expect(readMarket().coins).toBe(3000);
-  expect(topUpMarketDemo(172801000)).toContain('cap');
+  expect(readMarket().coins).toBe(150);
+  topUpMarketDemo(172801000);
+  expect(readMarket().coins).toBe(225);
+  localStorage.setItem('fn_market_v1', JSON.stringify({ coins: 1490, owned: [] }));
+  expect(topUpMarketDemo(200000000)).toContain('Added 10');
+  expect(topUpMarketDemo(300000000)).toContain('cap');
   localStorage.setItem('fn_market_v1', JSON.stringify({ coins: 100000, owned: [] }));
   expect(topUpMarketDemo()).toContain('cap');
   expect(readMarket().coins).toBe(100000);
+});
+
+it('offers the four requested item categories and keeps the catalog at 18 entries', () => {
+  expect(MARKET_ITEMS).toHaveLength(18);
+  expect(new Set(MARKET_ITEMS.map((item) => item.category))).toEqual(
+    new Set(['Brushes', 'Land', 'Creatures', 'Cosmetics']),
+  );
+});
+
+it('saves repeatable land markers in the same demo ledger as their coin purchase', () => {
+  topUpMarketDemo();
+  expect(purchaseMarketItem('waypoint_marker')).toContain('canvas location');
+  expect(readMarket().coins).toBe(225);
+  expect(purchaseMarketItem('waypoint_marker', { x: 12, y: -48 })).toBe('Purchased');
+  expect(readMarket().coins).toBe(125);
+  expect(readBeacons()).toEqual([
+    expect.objectContaining({ name: 'Collection marker 1', x: 12, y: -48 }),
+  ]);
+  expect(purchaseMarketItem('waypoint_marker', { x: 400, y: 500 })).toBe('Purchased');
+  expect(readMarket().coins).toBe(25);
+  expect(readBeacons()).toHaveLength(2);
 });

@@ -7,6 +7,8 @@ const palettes = [
   ['#60a5fa', '#c4b5fd', '#1e3a8a'],
   ['#d6b588', '#92400e', '#fde68a'],
 ];
+const paletteNames = ['Cyber', 'Sunset', 'Forest', 'Ocean', 'Fossil'];
+const paletteUnlocks = ['', 'palette_sunset', 'palette_forest', 'palette_ocean', 'custom_palettes'];
 const midnight = [
   '#100b24',
   '#231445',
@@ -33,6 +35,9 @@ export default function CreativeStudio({ owned }: { owned: string[] }) {
   const [stamp, setStamp] = useState(0);
   const [palette, setPalette] = useState(0);
   const [notice, setNotice] = useState('');
+  const availablePalettes = owned.includes('custom_palettes')
+    ? palettes.map((_, index) => index)
+    : [0, 1, 2, 3, 4].filter((index) => index === 0 || owned.includes(paletteUnlocks[index]));
   useEffect(() => {
     const ctx = canvas.current?.getContext('2d');
     if (ctx) {
@@ -75,7 +80,7 @@ export default function CreativeStudio({ owned }: { owned: string[] }) {
           Tool{' '}
           <select value={tool} onChange={(e) => setTool(e.target.value)}>
             <option value="pen">Basic pen</option>
-            {['rainbow_brush', 'glow_pen', 'pixel_stamps', 'gradient_fill']
+            {['rainbow_brush', 'glow_pen', 'pixel_stamps', 'creature_stamps', 'gradient_fill']
               .filter((id) => owned.includes(id))
               .map((id) => (
                 <option key={id} value={id}>
@@ -87,47 +92,49 @@ export default function CreativeStudio({ owned }: { owned: string[] }) {
         <label>
           Color <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
         </label>
-        {owned.includes('custom_palettes') && (
+        {availablePalettes.length > 1 && (
           <label>
             Palette{' '}
             <select value={palette} onChange={(e) => setPalette(Number(e.target.value))}>
-              {['Cyber', 'Sunset', 'Forest', 'Ocean', 'Fossil'].map((name, i) => (
-                <option key={name} value={i}>
-                  {name}
+              {availablePalettes.map((index) => (
+                <option key={paletteNames[index]} value={index}>
+                  {paletteNames[index]}
                 </option>
               ))}
             </select>
           </label>
         )}
         <div className="fn-studio-colors">
-          {(owned.includes('midnight_cyber')
-            ? midnight
-            : palettes[owned.includes('custom_palettes') ? palette : 0]
-          ).map((c) => (
-            <button
-              key={c}
-              style={{ background: c }}
-              aria-label={'Use ' + c}
-              onClick={() => setColor(c)}
-            />
-          ))}
+          {(owned.includes('midnight_cyber') && palette === 0 ? midnight : palettes[palette]).map(
+            (c) => (
+              <button
+                key={c}
+                style={{ background: c }}
+                aria-label={'Use ' + c}
+                onClick={() => setColor(c)}
+              />
+            ),
+          )}
         </div>
-        {tool === 'pixel_stamps' && (
+        {(tool === 'pixel_stamps' || tool === 'creature_stamps') && (
           <label>
             Stamp{' '}
             <select value={stamp} onChange={(e) => setStamp(Number(e.target.value))}>
-              {[
-                'Diamond',
-                'Cross',
-                'Steps',
-                'Heart',
-                'Spark',
-                'Frame',
-                'Flag',
-                'Tree',
-                'Bolt',
-                'Orbit',
-              ].map((name, i) => (
+              {(tool === 'creature_stamps'
+                ? ['Fox', 'Moth', 'Fish', 'Sprout', 'Cloud']
+                : [
+                    'Diamond',
+                    'Cross',
+                    'Steps',
+                    'Heart',
+                    'Spark',
+                    'Frame',
+                    'Flag',
+                    'Tree',
+                    'Bolt',
+                    'Orbit',
+                  ]
+              ).map((name, i) => (
                 <option key={name} value={i}>
                   {name}
                 </option>
@@ -182,19 +189,28 @@ export default function CreativeStudio({ owned }: { owned: string[] }) {
             ctx.fillRect(0, 0, 256, 256);
             return;
           }
-          if (tool === 'pixel_stamps') {
-            const patterns = [
-              '00100/01110/11111/01110/00100',
-              '00100/00100/11111/00100/00100',
-              '10000/11000/01100/00110/00011',
-              '01010/11111/11111/01110/00100',
-              '10101/01110/11111/01110/10101',
-              '11111/10001/10001/10001/11111',
-              '11110/11100/11110/10000/10000',
-              '00100/01110/11111/00100/00100',
-              '00110/01100/11110/00100/01000',
-              '01110/10001/10101/10001/01110',
-            ];
+          if (tool === 'pixel_stamps' || tool === 'creature_stamps') {
+            const patterns =
+              tool === 'creature_stamps'
+                ? [
+                    '01110/11011/11111/10101/01010',
+                    '10001/11011/11111/01110/00100',
+                    '00010/10111/11111/10111/00010',
+                    '00100/10101/01110/00100/01110',
+                    '00000/01110/11111/11011/00000',
+                  ]
+                : [
+                    '00100/01110/11111/01110/00100',
+                    '00100/00100/11111/00100/00100',
+                    '10000/11000/01100/00110/00011',
+                    '01010/11111/11111/01110/00100',
+                    '10101/01110/11111/01110/10101',
+                    '11111/10001/10001/10001/11111',
+                    '11110/11100/11110/10000/10000',
+                    '00100/01110/11111/00100/00100',
+                    '00110/01100/11110/00100/01000',
+                    '01110/10001/10101/10001/01110',
+                  ];
             ctx.fillStyle = color;
             patterns[stamp].split('/').forEach((row, y) =>
               [...row].forEach((cell, x) => {

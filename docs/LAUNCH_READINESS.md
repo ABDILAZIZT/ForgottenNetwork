@@ -24,6 +24,12 @@ Updated 2026-10-14. This document describes the current implementation; earlier 
 - Development uses a labeled sponsor simulation. Production GPT rewards are 15–25 local demo gems, with a 10/day Free or 15/day Artist device limit and a three-minute device cooldown. VIP remains ad-free. Browser storage is editable, and Google rewarded web ads do not provide server-side verification; these are not trusted or cash-equivalent balances.
 - No automatic loading/teleport interstitial is implemented. Display placements are restricted to optional secondary panels and the store so they do not cover drawing controls.
 
+### Economy and Creator Collection
+
+- The login streak pays 40–100 local demo gems. Three seeded daily tasks reward 30–50 each, and each first neighborhood visit per local day adds 2–5 gems. The HUD challenge panel tracks draw, explore, and placement progress and prevents a second claim on the same browser for that day.
+- The 18-entry Creator Collection has Brushes, Land, Creatures, and Cosmetics categories, confirmed local purchases, a recent activity list, a creature stamp pack, three individual palette unlocks, and repeatable local waypoint markers. Expanded Canvas Area remains an unpurchasable server-dependent preview.
+- Main demo gems and Creator Collection coins are separate browser-only balances. Each has a 75-unit free daily allowance; collection coins have a 1,500 cap. These demo balances are editable and have no cash value.
+
 ### Moderation, history and reliability
 
 - Reports for an entity or the current 128×128 chunk; moderator queue, hide/unhide, report resolution/dismissal, 30-day publishing suspensions and reinstatement.
@@ -46,7 +52,7 @@ Updated 2026-10-14. This document describes the current implementation; earlier 
 
 ## Local verification
 
-Latest completed checks (2026-10-14): `pnpm check` passed (108 tests: 3 shared, 54 client, 51 server), plus a local browser/API smoke check. `pnpm audit --prod` previously reported no known vulnerabilities after upgrading the transitive query parser for [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g) and [GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx). An advisory scan is not a penetration test or a guarantee of security.
+Latest automated checks (2026-10-14): `pnpm check` passed (115 tests: 3 shared, 61 client, 51 server), including formatting, lint, TypeScript and the production build. The earlier 108-test run also included a local browser/API smoke check. The Phase 3 browser smoke could not be completed: the Windows browser helper stopped before reloading the local preview because it could not verify the active URL. `pnpm audit --prod` previously reported no known vulnerabilities after upgrading the transitive query parser for [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g) and [GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx). An advisory scan is not a penetration test or a guarantee of security.
 
 Run `pnpm check` for formatting, lint, tests and production build. Server tests use temporary embedded PostgreSQL by default and do not touch `server/db.json` or a hosted database. For native integration, supply `TEST_DATABASE_URL` pointing to a disposable localhost database whose name ends in `_test`; use a fresh database for each run.
 

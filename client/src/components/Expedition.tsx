@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Compass, X } from 'lucide-react';
 import { readExploration, recordExploration } from '../exploration';
-import { readMarket, readTier } from '../economy';
+import { explorationGemReward, grantExplorationGems, readMarket, readTier } from '../economy';
+import { recordDailyChallengeExplore } from '../challenges';
 import { useModal } from './useModal';
 import MarketCatalog from './MarketCatalog';
 import AdSlot from './AdSlot';
@@ -46,7 +47,10 @@ export default function Expedition({
   const modal = useModal(open && !hidden, () => setOpen(false));
   const region = `${Math.floor(x / 512)},${Math.floor(y / 512)}`;
   useEffect(() => {
-    if (!hidden) recordExploration(x, y);
+    if (!hidden) {
+      recordExploration(x, y);
+      if (recordDailyChallengeExplore(region)) grantExplorationGems(explorationGemReward());
+    }
   }, [region, hidden]);
   useEffect(() => {
     const refresh = () => setProgress(readExploration());
@@ -216,7 +220,7 @@ export default function Expedition({
               }}
             >
               {tab === 'market' ? (
-                <MarketCatalog showAds={tier !== 'vip'} />
+                <MarketCatalog showAds={tier !== 'vip'} position={{ x, y }} />
               ) : tab === 'atmosphere' ? (
                 <section className="fn-preferences">
                   <h3>Set the atmosphere</h3>

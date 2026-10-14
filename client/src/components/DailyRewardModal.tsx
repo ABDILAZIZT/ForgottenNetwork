@@ -14,12 +14,12 @@ interface Props {
 }
 
 const rewards = [
-  { day: 1, gems: 25 },
-  { day: 2, gems: 30 },
+  { day: 1, gems: 40 },
+  { day: 2, gems: 45 },
   { day: 3, gems: 50, label: 'Streak Bonus!' },
-  { day: 4, gems: 30 },
-  { day: 5, gems: 35 },
-  { day: 6, gems: 40 },
+  { day: 4, gems: 45 },
+  { day: 5, gems: 55 },
+  { day: 6, gems: 60 },
   { day: 7, gems: 100, label: 'Weekly Champion!' },
 ];
 

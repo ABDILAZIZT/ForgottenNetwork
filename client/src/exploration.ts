@@ -1,3 +1,5 @@
+import { recordDailyChallengeProgress } from './challenges';
+
 export interface Activity {
   id: string;
   text: string;
@@ -65,6 +67,12 @@ export function recordExploration(x: number, y: number, pixels = 0, text?: strin
     localStorage.setItem('fn_exploration', JSON.stringify(state));
   } catch {
     return;
+  }
+  if (id?.startsWith('own:')) {
+    if (pixels > 0) recordDailyChallengeProgress('draw', Math.floor(pixels));
+    recordDailyChallengeProgress('place', 1);
+  } else if (!id && text?.startsWith('You painted ') && pixels > 0) {
+    recordDailyChallengeProgress('draw', Math.floor(pixels));
   }
   window.dispatchEvent(new Event('fn-exploration-change'));
 }

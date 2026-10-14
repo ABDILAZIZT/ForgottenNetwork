@@ -25,8 +25,19 @@ export default function WorldExtras({
   const claims = readClaims();
   const canMap = ownedItems.includes('chunk_visitor_map');
   useEffect(() => {
-    setBeacons(readBeacons());
-    engine?.setClaims(readClaims());
+    const refresh = () => {
+      setBeacons(readBeacons());
+      engine?.setClaims(readClaims());
+    };
+    refresh();
+    window.addEventListener('fn-beacons-change', refresh);
+    window.addEventListener('fn-market-change', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('fn-beacons-change', refresh);
+      window.removeEventListener('fn-market-change', refresh);
+      window.removeEventListener('storage', refresh);
+    };
   }, [engine, revision]);
   useEffect(() => {
     engine?.setHeatmap(canMap && heatmap);

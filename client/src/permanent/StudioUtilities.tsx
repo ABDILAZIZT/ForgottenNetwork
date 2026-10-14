@@ -5,6 +5,7 @@ import AdBannerModal from '../components/AdBannerModal';
 import AdSlot from '../components/AdSlot';
 import CommunityPanel from '../components/CommunityPanel';
 import WorldExtras from '../components/WorldExtras';
+import DailyChallenges from '../components/DailyChallenges';
 import { useWorldRepository } from '../repositories';
 import type { ChunkRecord } from '../repositories/types';
 import { AuthClient, type SessionUser } from '../auth';
@@ -49,6 +50,7 @@ export default function StudioUtilities({
   onNotice,
   open,
   onClose,
+  hidden,
 }: {
   token?: string;
   engine: PermanentEngine | null;
@@ -56,6 +58,7 @@ export default function StudioUtilities({
   onNotice: (message: string) => void;
   open: boolean;
   onClose: () => void;
+  hidden: boolean;
 }) {
   const repository = useWorldRepository();
   const [repositoryStatus, setRepositoryStatus] = useState(() => repository.getStatus());
@@ -84,6 +87,23 @@ export default function StudioUtilities({
   useEffect(() => {
     if (open) refresh();
   }, [open]);
+  useEffect(() => {
+    const updateGems = () => setGems(readNumber('fn_user_gems', 150));
+    const updateMarket = () => {
+      setOwned(ownedItems());
+      setRevision((current) => current + 1);
+    };
+    window.addEventListener('fn-gems-change', updateGems);
+    window.addEventListener('fn-market-change', updateMarket);
+    window.addEventListener('fn-beacons-change', updateMarket);
+    window.addEventListener('storage', updateGems);
+    return () => {
+      window.removeEventListener('fn-gems-change', updateGems);
+      window.removeEventListener('fn-market-change', updateMarket);
+      window.removeEventListener('fn-beacons-change', updateMarket);
+      window.removeEventListener('storage', updateGems);
+    };
+  }, []);
   useEffect(() => {
     void auth
       .getConfiguration()
@@ -189,6 +209,7 @@ export default function StudioUtilities({
   };
   return (
     <>
+      {!hidden && <DailyChallenges onReward={award} />}
       <WorldExtras
         engine={engine}
         subscriptionTier={tier}
@@ -451,6 +472,8 @@ export default function StudioUtilities({
         onClose={() => setPane('')}
         userGems={gems}
         ownedItems={owned}
+        worldPosition={{ x, y }}
+        onWatchAd={() => setPane('ads')}
         subscriptionTier={tier}
         streakCount={effectiveStreak()}
         adsWatchedToday={dailyCount('fn_ads_today', 'fn_ads_last_date')}
@@ -465,7 +488,7 @@ export default function StudioUtilities({
         onAddGems={(amount) => {
           if (Date.now() - readNumber('fn_legacy_grant_at') < 86400000) return;
           localStorage.setItem('fn_legacy_grant_at', String(Date.now()));
-          award(Math.min(3000, Math.max(0, amount)));
+          award(Math.min(75, Math.max(0, amount)));
         }}
       />
     </>

@@ -2,9 +2,9 @@
 
 # دليل الإعداد الكامل والنشر وتحقيق الدخل
 
-Updated 4 October 2026. This guide describes this delivery; older phase reports remain as historical records.
+Updated 14 October 2026. This guide describes this delivery; older phase reports remain as historical records.
 
-The project runs locally. Advertising and card payments are intentionally previews. No accounts, paid resources, domain purchases or deployments were created. Expanded Canvas Area and Priority Rendering are catalog previews, not purchasable entitlements. This delivery does not certify public-launch readiness, WCAG conformance or Google approval.
+The project runs locally. Advertising and card payments are intentionally previews. No accounts, paid resources, domain purchases or deployments were created. Expanded Canvas Area is a catalog preview, not a purchasable entitlement. This delivery does not certify public-launch readiness, WCAG conformance or Google approval.
 
 **العربية:** المشروع يعمل محلياً. الإعلانات والدفع الحقيقي يحتاجان إعداداً منفصلاً. لا توجد رسوم أو خدمات مدفوعة تم تفعيلها.
 
@@ -57,6 +57,8 @@ pnpm test
 ```
 
 Open **Expedition → market** for the Creator Collection. Add free demo coins, choose a tool, confirm the purchase, then open Studio. Export the drawing as PNG and place it with the existing Image / GIF or Upload tool. **Expedition → atmosphere** enables purchased cosmetic effects, weather, CRT and haptics. Classic's original gem wallet remains separate from Studio demo coins to preserve existing purchases.
+
+Daily challenges appear in the collapsible canvas HUD. One draw, explore, and creation task is selected deterministically for each local day; challenges award 30–50 local demo gems when collected. First visits to new daily neighborhoods add 2–5 gems. Login streak rewards range from 40–100 gems. The main gem allowance and Creator Collection coins each have a separate 75-per-day demo grant; collection coins cap at 1,500. These balances are browser-only and can be cleared or edited.
 
 No environment file is needed for the default local experience. Root `.env.example` is a reference, not an automatically loaded configuration: `node server/index.js` does not load root `.env`. Set PowerShell variables explicitly or use `node --env-file=.env server/index.js` for a deliberately prepared backend configuration. Vite reads frontend variables from `client/.env.local`; never put secrets in `VITE_*` variables. Do not blindly enable the example `DATABASE_URL` or production OIDC placeholders locally.
 
