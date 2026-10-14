@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api, readSaved } from './permanent/api';
 import { AdConsentSettings } from './components/AdConsent';
+import LocaleControl from './LocaleControl';
+import { translate, useLocale } from './locale';
 import './policies.css';
 
 export const RULES_VERSION = '2026-10-06';
@@ -81,15 +83,27 @@ type Safety = {
   mediaReviews: Array<{ id: string; action: 'approve' | 'reject'; created_at: string }>;
 };
 export function PolicyLinks() {
+  const locale = useLocale();
+  const titleKeys: Record<string, Parameters<typeof translate>[0]> = {
+    '/community': 'policy.community',
+    '/privacy': 'policy.privacy',
+    '/terms': 'policy.terms',
+    '/cookies': 'policy.cookies',
+    '/refunds': 'policy.refunds',
+  };
   return (
-    <nav className="policy-links" aria-label="Policies and help">
-      {Object.entries(pages).map(([path, page]) => (
+    <nav
+      className="policy-links"
+      aria-label={locale === 'ar' ? 'السياسات والمساعدة' : 'Policies and help'}
+      dir={locale === 'ar' ? 'rtl' : 'ltr'}
+    >
+      {Object.entries(pages).map(([path]) => (
         <a key={path} href={path}>
-          {page.title}
+          {translate(titleKeys[path], locale)}
         </a>
       ))}
-      <a href="/safety">Safety & privacy requests</a>
-      <a href="/THIRD_PARTY_NOTICES.txt">Third-party licenses</a>
+      <a href="/safety">{translate('policy.safety', locale)}</a>
+      <a href="/THIRD_PARTY_NOTICES.txt">{translate('policy.thirdParty', locale)}</a>
     </nav>
   );
 }
@@ -390,9 +404,20 @@ function ModerationMediaPreview({ media, token }: { media: PendingMedia; token: 
 }
 export function PolicyPage() {
   const page = pages[location.pathname];
+  const locale = useLocale();
   return (
-    <main className="policy-page">
-      <a href="/">← Back to canvas</a>
+    <main className="policy-page" lang="en" dir="ltr">
+      <div className="policy-page-controls">
+        <a href="/" lang={locale} dir="auto">
+          {translate('policy.back', locale)}
+        </a>
+        <LocaleControl />
+      </div>
+      {locale === 'ar' && (
+        <p lang="ar" dir="rtl">
+          {translate('policy.note', locale)}
+        </p>
+      )}
       <h1>{page?.title || 'Safety & privacy'}</h1>
       <p>Version {RULES_VERSION}</p>
       {page?.paragraphs.map((p, i) => (

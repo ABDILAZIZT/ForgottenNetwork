@@ -1,6 +1,6 @@
 # Launch readiness and operator handoff
 
-Updated 2026-10-14. This document describes the current implementation; earlier phase documents are historical design/implementation notes.
+Updated 2026-10-15. This document describes the current implementation; earlier phase documents are historical design/implementation notes.
 
 ## Current decision
 
@@ -55,13 +55,13 @@ Updated 2026-10-14. This document describes the current implementation; earlier 
 
 ## Local verification
 
-Latest automated checks (2026-10-14): `pnpm check` passed (115 tests: 3 shared, 61 client, 51 server), including formatting, lint, TypeScript and the production build. The server suite covers permanent and Classic media review, three-reporter temporary holds, and hold release. The earlier 108-test run also included a local browser/API smoke check. A current browser smoke could not be completed: the Windows browser helper stopped before reloading the local preview because it could not verify the active URL. `pnpm audit --prod` previously reported no known vulnerabilities after upgrading the transitive query parser for [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g) and [GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx). An advisory scan is not a penetration test or a guarantee of security.
+Latest automated checks (2026-10-15): `pnpm check` passed (118 tests: 3 shared, 64 client, 51 server), including formatting, lint, TypeScript and the production build. The server suite covers permanent and Classic media review, three-reporter temporary holds, and hold release. An earlier 108-test run included a local browser/API smoke check. A current browser smoke could not be completed: the Windows browser helper stopped before reloading the local preview because it could not verify the active URL. `pnpm audit --prod` previously reported no known vulnerabilities after upgrading the transitive query parser for [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g) and [GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx). An advisory scan is not a penetration test or a guarantee of security.
 
 Run `pnpm check` for formatting, lint, tests and production build. Server tests use temporary embedded PostgreSQL by default and do not touch `server/db.json` or a hosted database. For native integration, supply `TEST_DATABASE_URL` pointing to a disposable localhost database whose name ends in `_test`; use a fresh database for each run.
 
 The integration suite exercises migrations twice, readiness, visitor denial, idempotency, target binding, stale writes, simultaneous first-write contenders, deletion tombstones, chunk restoration, media ownership/visibility, moderation permissions, suspensions, immutable audits, region denial, database-backed throttles and operator roles. Embedded backup restoration checks content, revisions and immutable audits. This is **not** proof of hosted TLS, concurrent network locking, provider login or `pg_dump` recovery.
 
-Browser checks cover the local community panel, contribution selection, Visit coordinates, copy-link confirmation, URL position/zoom restoration, Escape/focus restoration, the reduced-motion toggle and a 390×844 viewport. No browser warnings/errors were captured during this check. Local mode is not the hosted multiplayer experience; moderator APIs are covered by integration tests, not a live OIDC browser session.
+The earlier browser check covered the local community panel, contribution selection, Visit coordinates, copy-link confirmation, URL position/zoom restoration, Escape/focus restoration, the reduced-motion toggle and a 390×844 viewport. No browser warnings/errors were captured during that historical check; it does not validate the later safety and localization changes. Local mode is not the hosted multiplayer experience; moderator APIs are covered by integration tests, not a live OIDC browser session.
 
 ## Start here: create staging
 

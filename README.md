@@ -72,7 +72,7 @@ Classic Studio remote mode connects the repository to versioned, idempotent shar
 
 ## UI status
 
-`PermanentWorld` is the only application entry. The obsolete `App`, `WorldOverlay`, Classic onboarding, `PixelEditor`, and `EntityCreatorModal` were removed because they had no callers. `RasterStudio` provides local image editing and versioned owner revisions; `StudioUtilities` preserves saved-world access. See [the migration map and limitations](docs/STUDIO_MIGRATION.md).
+`PermanentWorld` is the only application entry. The obsolete `App`, `WorldOverlay`, Classic onboarding, `PixelEditor`, and `EntityCreatorModal` were removed because they had no callers. `RasterStudio` provides local image editing and versioned owner revisions; `StudioUtilities` preserves saved-world access. The canvas shell, first-mark onboarding, Expedition tutorial, ad-choice notice, and policy navigation can switch between English and Arabic; most editor, marketplace, moderation, and legal body text remains English. See [the migration map and limitations](docs/STUDIO_MIGRATION.md) and [the polish and localization notes](docs/POLISH_AND_LOCALIZATION.md).
 
 ## Advertising status
 
@@ -91,6 +91,7 @@ The canvas includes a seven-day login streak, three date-seeded daily challenges
 - [Permanent canvas: operation, guarantees, backup and recovery](docs/PERMANENT_CANVAS.md)
 
 - [Arabic project guide](PROJECT_GUIDE_AR.md)
+- [Product polish and localization scope](docs/POLISH_AND_LOCALIZATION.md)
 - [Persistence model](docs/PERSISTENCE.md)
 - [Phase 0 baseline](docs/PHASE_0_BASELINE.md)
 - [Product specification and world rules](docs/PRODUCT_SPEC.md)

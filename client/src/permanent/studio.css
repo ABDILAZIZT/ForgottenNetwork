@@ -239,6 +239,9 @@
   --violet: #6b46a1;
   --cyan: #226773;
 }
+html[lang='ar'] .pw-world {
+  font-family: Inter, 'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
+}
 [data-theme='light'] .pw-top,
 [data-theme='light'] .pw-toolbar,
 [data-theme='light'] .pw-tool-options,

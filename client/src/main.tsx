@@ -12,6 +12,9 @@ import {
 import './index.css';
 import './enhancements.css';
 import { isPolicyPage, PolicyPage } from './Policies';
+import { initializeLocale } from './locale';
+
+initializeLocale();
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {

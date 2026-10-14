@@ -12,6 +12,23 @@
 .policy-page h2 {
   margin: 24px 0 12px;
 }
+.policy-page-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.fn-locale-switch {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 6px 12px;
+  color: inherit;
+  background: #26334b;
+  border: 1px solid #94a3b8;
+  border-radius: 999px;
+  font: inherit;
+  cursor: pointer;
+}
 .policy-page p {
   margin: 16px 0;
 }

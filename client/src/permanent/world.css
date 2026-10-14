@@ -194,6 +194,14 @@
   color: #d8d4e5;
   font-size: 12px;
 }
+.pw-world .fn-locale-switch {
+  min-height: 34px;
+  padding: 7px 11px;
+  border-color: #94a3b855;
+  background: #ffffff09;
+  font-size: 12px;
+  white-space: nowrap;
+}
 .pw-top-actions .pw-profile-button {
   border-color: color-mix(in srgb, var(--artist) 30%, transparent);
   background: color-mix(in srgb, var(--artist) 10%, transparent);
@@ -1127,6 +1135,10 @@
   font-size: 10px;
   min-height: 26px;
   padding: 0;
+}
+.pw-welcome-footer .fn-locale-switch {
+  min-height: 26px;
+  padding: 4px 8px;
 }
 .pw-welcome-footer details {
   text-align: right;

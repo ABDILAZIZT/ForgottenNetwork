@@ -73,6 +73,8 @@ import { readDraftMode, saveDraftMode, draftPreferenceKey } from './draftPrefere
 import { download } from '../download';
 import ColorControls from './ColorControls';
 import { PolicyLinks, RULES_SUMMARY, RULES_VERSION } from '../Policies';
+import LocaleControl from '../LocaleControl';
+import { getLocale, translate, useLocale } from '../locale';
 
 const COLORS = [
   '#a78bfa',
@@ -107,7 +109,7 @@ const TOOLS: Array<[Tool, LucideIcon, string, string]> = [
 const STICKERS = ['planet', 'heart', 'flower', 'bolt', 'star', 'orbit', 'spark', 'peace'];
 const FONTS = ['Space Grotesk', 'Orbitron', 'Inter', 'Fira Code', 'Georgia'];
 const count = (n = 0) =>
-  new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+  new Intl.NumberFormat(getLocale(), { notation: 'compact', maximumFractionDigits: 1 }).format(n);
 const assetUrl = (id: string) => '/api/canvas/assets/' + id;
 const initialSettings: Settings = {
   tool: 'pan',
@@ -135,6 +137,7 @@ type Session = { token: string; user: Identity };
 type Pending = { actor: string; element: Placement };
 
 export default function PermanentWorld() {
+  const locale = useLocale();
   const [utilitiesOpen, setUtilitiesOpen] = useState(false);
   const editorUpload = useRef<{ key: string; asset: Asset; id: string } | null>(null);
   const [editor, setEditor] = useState<{
@@ -1161,7 +1164,7 @@ export default function PermanentWorld() {
         className="pw-canvas"
         ref={canvas}
         tabIndex={0}
-        aria-label="Shared artwork canvas. Arrow keys pan; plus and minus zoom. Use Profile for a keyboard-accessible list of your artwork."
+        aria-label={translate('canvas.label', locale)}
       />
       <Expedition
         x={view.x + view.width / 2}
@@ -1182,33 +1185,40 @@ export default function PermanentWorld() {
         }}
       />
       <header className="pw-top">
-        <a className="pw-brand" href="/" aria-label="Forgotten Network home">
+        <a className="pw-brand" href="/" aria-label={translate('brand.home', locale)}>
           <span className="pw-brand-icon">
             <Layers size={23} />
           </span>
           <span>
-            FORGOTTEN<span className="pw-brand-sub">THE PERMANENT CANVAS</span>
+            FORGOTTEN<span className="pw-brand-sub">{translate('brand.subtitle', locale)}</span>
           </span>
         </a>
         <div className="pw-live">
           <span className={connected ? 'online' : ''} />
-          <strong>{peers.length}</strong> here now <i />{' '}
-          <span className="pw-drawing-count">{peers.filter((p) => p.drawing).length} drawing</span>
+          <strong>{peers.length}</strong> {translate('header.hereNow', locale)} <i />{' '}
+          <span className="pw-drawing-count">
+            {peers.filter((p) => p.drawing).length} {translate('header.drawing', locale)}
+          </span>
         </div>
         <div className="pw-top-actions">
+          <LocaleControl />
           <button
-            title="Tools & saved worlds"
-            aria-label="Tools & saved worlds"
+            title={translate('header.toolsLabel', locale)}
+            aria-label={translate('header.toolsLabel', locale)}
             onClick={() => setUtilitiesOpen(true)}
           >
-            Tools
+            {translate('header.tools', locale)}
           </button>
           {session && (
             <button
-              title="Artwork studio: fill, select, transform and layers"
+              title={
+                locale === 'ar'
+                  ? 'استوديو الأعمال الفنية: التعبئة والتحديد والتحويل والطبقات'
+                  : 'Artwork studio: fill, select, transform and layers'
+              }
               onClick={() => setEditor({})}
             >
-              Studio
+              {translate('header.studio', locale)}
             </button>
           )}
           {session && (
@@ -1218,12 +1228,12 @@ export default function PermanentWorld() {
               onClick={() => engine.current?.publishDrafts()}
             >
               <Check size={17} />
-              Publish {drafts > 0 ? `(${drafts})` : ''}
+              {translate('header.publish', locale)} {drafts > 0 ? `(${drafts})` : ''}
             </button>
           )}
           <button
-            aria-label="Toggle color theme"
-            title="Toggle color theme"
+            aria-label={translate('header.theme', locale)}
+            title={translate('header.theme', locale)}
             onClick={() =>
               setSettings((s) => ({ ...s, theme: s.theme === 'light' ? 'dark' : 'light' }))
             }
@@ -1233,14 +1243,15 @@ export default function PermanentWorld() {
           <button
             className={panel === 'leaderboard' ? 'active' : ''}
             onClick={() => togglePanel('leaderboard')}
-            title="Canvas leaderboard"
+            title={translate('header.leaderboard', locale)}
           >
             <Trophy size={17} />
-            <span>Leaderboard</span>
+            <span>{translate('header.leaderboard', locale)}</span>
           </button>
           <button
             className="pw-icon"
-            title="Notifications"
+            title={translate('header.notifications', locale)}
+            aria-label={translate('header.notifications', locale)}
             onClick={() => (session ? togglePanel('notifications') : setWelcome(true))}
           >
             <Bell size={18} />
@@ -1248,7 +1259,7 @@ export default function PermanentWorld() {
           </button>
           <button
             className="pw-profile-button"
-            aria-label="Open your profile"
+            aria-label={locale === 'ar' ? 'افتح ملفك الشخصي' : 'Open your profile'}
             onClick={() => (session ? togglePanel('profile') : setWelcome(true))}
             style={{ '--artist': session?.user.color || '#a78bfa' } as React.CSSProperties}
           >
@@ -1257,7 +1268,7 @@ export default function PermanentWorld() {
             ) : (
               <UserRound size={17} />
             )}
-            <span>{session?.user.name || 'Join the canvas'}</span>
+            <span>{session?.user.name || translate('header.join', locale)}</span>
           </button>
         </div>
       </header>
@@ -1576,15 +1587,16 @@ export default function PermanentWorld() {
         </span>
         <span className="pw-status">
           <span className={connected ? 'online' : ''} />
-          {settings.draftMode ? 'Draft mode · ' : 'Publish mode · '}
-          {status}
+          {translate(settings.draftMode ? 'footer.draft' : 'footer.publish', locale)} ·{status}
         </span>
         <span className="pw-current-tool">
           <ActiveIcon size={13} />
           {activeTool[2]}
         </span>
         {pendingCount > 0 && (
-          <button onClick={() => void drain()}>Retry {pendingCount} unsent</button>
+          <button onClick={() => void drain()}>
+            {translate('footer.retry', locale, { count: pendingCount })}
+          </button>
         )}
         <div className="pw-zoom">
           <button title="Zoom out" onClick={() => engine.current?.zoom(1 / 1.25)}>
@@ -2060,7 +2072,12 @@ export default function PermanentWorld() {
                   setSettings((s) => ({ ...s, theme: s.theme === 'light' ? 'dark' : 'light' }))
                 }
               >
-                Switch to {settings.theme === 'light' ? 'dark' : 'light'} mode
+                {translate('settings.switchTheme', locale, {
+                  theme: translate(
+                    settings.theme === 'light' ? 'settings.dark' : 'settings.light',
+                    locale,
+                  ),
+                })}
               </button>
               {(['grid', 'snap', 'rulers'] as const).map((key) => (
                 <label className="pw-check" key={key}>
@@ -2069,11 +2086,14 @@ export default function PermanentWorld() {
                     checked={Boolean(settings[key])}
                     onChange={(e) => setSettings((s) => ({ ...s, [key]: e.target.checked }))}
                   />
-                  {key === 'snap'
-                    ? 'Snap to 8px grid'
-                    : key === 'rulers'
-                      ? 'Coordinate rulers'
-                      : 'Show grid'}
+                  {translate(
+                    key === 'snap'
+                      ? 'settings.snap'
+                      : key === 'rulers'
+                        ? 'settings.rulers'
+                        : 'settings.grid',
+                    locale,
+                  )}
                 </label>
               ))}
               <PolicyLinks />
@@ -2121,15 +2141,15 @@ export default function PermanentWorld() {
                   checked={settings.reducedMotion}
                   onChange={(e) => setSettings((s) => ({ ...s, reducedMotion: e.target.checked }))}
                 />
-                Reduced motion
+                {translate('settings.reducedMotion', locale)}
               </label>
               <label className="pw-check">
                 <input type="checkbox" checked={sound} onChange={toggleSound} />
-                Ambient audio and drawing sounds
+                {translate('settings.sound', locale)}
               </label>
               <button className="pw-wide-button" onClick={() => exportRef.current(view)}>
                 <ArrowDownToLine size={16} />
-                Export visible canvas
+                {translate('settings.export', locale)}
               </button>
               <p className="pw-muted">All drawing tools now live in this studio.</p>
             </>
@@ -2141,39 +2161,40 @@ export default function PermanentWorld() {
           className="pw-welcome"
           role="dialog"
           aria-modal="true"
-          aria-label="Join Forgotten Network"
+          aria-label={translate('welcome.dialog', locale)}
           tabIndex={-1}
           ref={welcomeRef}
         >
           <div className="pw-welcome-content">
-            <div className="fn-typewriter">You've found something hidden...</div>
+            <div className="fn-typewriter">{translate('welcome.typewriter', locale)}</div>
             <div className="pw-eyebrow">
-              <span /> A WORLD BUILT BY PEOPLE LIKE YOU
+              <span /> {translate('welcome.eyebrow', locale)}
             </div>
             <h1>
-              YOUR MARK.
+              {translate('welcome.title', locale)}
               <br />
-              <span>YOUR WORLD.</span>
+              <span>{translate('welcome.titleLine2', locale)}</span>
             </h1>
             <p>
-              Some things deserve to stay.
+              {translate('welcome.promise1', locale)}
               <br />
-              Draw your story. Own your pixels.
+              {translate('welcome.promise2', locale)}
               <br />
-              Leave a little piece of yourself behind.
+              {translate('welcome.promise3', locale)}
             </p>
             <div className="pw-join-form">
               <p>
-                Use a nickname. Do not share personal information. Images are not automatically
-                checked for safety. <a href="/community">Community Rules</a> ·{' '}
-                <a href="/privacy">Privacy</a> · <a href="/safety">Safety & privacy requests</a>
+                {translate('welcome.safety', locale)}{' '}
+                <a href="/community">{translate('welcome.communityRules', locale)}</a> ·{' '}
+                <a href="/privacy">{translate('welcome.privacy', locale)}</a> ·{' '}
+                <a href="/safety">{translate('welcome.safetyLink', locale)}</a>
               </p>
               <label>
-                Your artist name
+                {translate('welcome.artistName', locale)}
                 <input
                   aria-label="Artist name"
                   autoComplete="nickname"
-                  placeholder="What should the world call you?"
+                  placeholder={translate('welcome.namePlaceholder', locale)}
                   maxLength={24}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -2181,7 +2202,7 @@ export default function PermanentWorld() {
               </label>
               <div className="pw-identity-row">
                 <div>
-                  <label>Your signature</label>
+                  <label>{translate('welcome.signature', locale)}</label>
                   <div className="pw-signatures">
                     {COLORS.slice(0, 6).map((color) => (
                       <button
@@ -2194,9 +2215,14 @@ export default function PermanentWorld() {
                     ))}
                   </div>
                 </div>
-                <label className="pw-avatar-upload" title="Optional avatar">
+                <label
+                  className="pw-avatar-upload"
+                  title={translate('welcome.optionalAvatar', locale)}
+                >
                   <ImagePlus size={18} />
-                  <span>{avatar ? 'Avatar ready' : 'Add avatar'}</span>
+                  <span>
+                    {translate(avatar ? 'welcome.avatarReady' : 'welcome.addAvatar', locale)}
+                  </span>
                   <input
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
@@ -2217,27 +2243,30 @@ export default function PermanentWorld() {
                   <Loader2 className="spin" size={20} />
                 ) : (
                   <>
-                    START DRAWING NOW
+                    {translate('welcome.start', locale)}
                     <ArrowRight size={20} />
                   </>
                 )}
               </button>
             </div>
             <div className="pw-welcome-footer">
-              <button onClick={toggleSound}>{sound ? 'Mute ambience' : 'Enable ambience'}</button>
+              <button onClick={toggleSound}>
+                {translate(sound ? 'welcome.mute' : 'welcome.enableSound', locale)}
+              </button>
               <button
                 onClick={() => {
                   setWelcome(false);
                   setExploring(true);
                 }}
               >
-                Just exploring <ArrowUpRight size={13} />
+                {translate('welcome.explore', locale)} <ArrowUpRight size={13} />
               </button>
+              <LocaleControl />
               <details>
-                <summary>Returning artist?</summary>
+                <summary>{translate('welcome.returning', locale)}</summary>
                 <input
                   aria-label="Identity recovery key"
-                  placeholder="Paste your private identity key"
+                  placeholder={translate('welcome.recoveryPlaceholder', locale)}
                   type="password"
                   value={recovery}
                   onChange={(e) => setRecovery(e.target.value)}
@@ -2245,26 +2274,24 @@ export default function PermanentWorld() {
               </details>
             </div>
             <small className="pw-forever-copy">
-              <Lock size={12} /> Published artwork is public. You can remove your own work. Your
-              identity stays on this device.
+              <Lock size={12} /> {translate('welcome.publicArt', locale)}
             </small>
           </div>
           <div className="pw-welcome-art-label">
-            <span className="pw-eyebrow">ALREADY PART OF THE WORLD</span>
-            <h2>
-              Little marks.
-              <br />
-              Limitless stories.
-            </h2>
+            <span className="pw-eyebrow">{translate('welcome.existing', locale)}</span>
+            <h2>{translate('welcome.stories', locale)}</h2>
             <div className="pw-live-stats">
               <span>
-                <strong>{count(stats?.artworks)}</strong>artworks
+                <strong>{count(stats?.artworks)}</strong>
+                {translate('welcome.artworks', locale)}
               </span>
               <span>
-                <strong>{count(stats?.artists)}</strong>artists
+                <strong>{count(stats?.artists)}</strong>
+                {translate('welcome.artists', locale)}
               </span>
               <span>
-                <strong>{count(stats?.pixels)}</strong>pixels claimed
+                <strong>{count(stats?.pixels)}</strong>
+                {translate('welcome.pixels', locale)}
               </span>
             </div>
           </div>
@@ -2273,7 +2300,7 @@ export default function PermanentWorld() {
       {exploring && !session && !welcome && (
         <button className="pw-join-floating" onClick={() => setWelcome(true)}>
           <Plus size={17} />
-          Make your mark
+          {translate('welcome.back', locale)}
         </button>
       )}
       {busy && (

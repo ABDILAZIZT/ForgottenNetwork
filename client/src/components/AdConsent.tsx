@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ADS_ENABLED, readAdConsent, saveAdConsent, type AdConsentChoice } from '../ads';
+import { translate, useLocale } from '../locale';
 
 function useAdChoice() {
   const [choice, setChoice] = useState<AdConsentChoice>(readAdConsent);
@@ -16,30 +17,34 @@ function useAdChoice() {
 }
 
 function ChoiceButtons({ onChoice }: { onChoice: (choice: 'accepted' | 'rejected') => void }) {
+  const locale = useLocale();
   return (
-    <div className="fn-ad-consent-actions">
+    <div className="fn-ad-consent-actions" lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <button type="button" onClick={() => onChoice('accepted')}>
-        Allow optional ads
+        {translate('ads.allow', locale)}
       </button>
       <button type="button" onClick={() => onChoice('rejected')}>
-        Decline optional ads
+        {translate('ads.decline', locale)}
       </button>
     </div>
   );
 }
 
 export function AdConsentNotice() {
+  const locale = useLocale();
   const [choice, setChoice] = useAdChoice();
   if (!ADS_ENABLED || choice !== 'unset') return null;
   const choose = (next: 'accepted' | 'rejected') => {
     if (saveAdConsent(next)) setChoice(next);
   };
   return (
-    <aside className="fn-ad-consent-notice" aria-label="Optional advertising choices">
-      <p>
-        Optional ads may use cookies or similar device storage. Ads stay off until you allow them
-        and the site has a Google-certified consent tool configured. The canvas works either way.
-      </p>
+    <aside
+      className="fn-ad-consent-notice"
+      aria-label={translate('ads.label', locale)}
+      lang={locale}
+      dir={locale === 'ar' ? 'rtl' : 'ltr'}
+    >
+      <p>{translate('ads.body', locale)}</p>
       <ChoiceButtons onChoice={choose} />
     </aside>
   );

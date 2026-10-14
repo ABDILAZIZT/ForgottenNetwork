@@ -6,6 +6,7 @@ import { recordDailyChallengeExplore } from '../challenges';
 import { useModal } from './useModal';
 import MarketCatalog from './MarketCatalog';
 import AdSlot from './AdSlot';
+import { translate, useLocale } from '../locale';
 
 export default function Expedition({
   x,
@@ -26,6 +27,7 @@ export default function Expedition({
   onRefresh: () => void;
   hidden?: boolean;
 }) {
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState('journey');
   const [progress, setProgress] = useState(readExploration);
@@ -124,25 +126,27 @@ export default function Expedition({
           aria-label="Open Expedition and Creator Market"
         >
           <Compass size={17} />
-          <span>Expedition</span>
+          <span>{translate('expedition.launch', locale)}</span>
         </button>
       )}
       {!hidden && !online && (
         <div className="fn-offline" role="status">
-          Offline · live canvas unavailable. Unsent marks stay on this device.
+          {translate('expedition.offline', locale)}
         </div>
       )}
       {!hidden && tutorial && (
         <div className="fn-tutorial" role="status">
-          <strong>Your first mark</strong>
+          <strong>{translate('expedition.tutorialTitle', locale)}</strong>
           <p>
-            1. Choose your identity if asked.
+            {translate('expedition.tutorial1', locale)}
             <br />
-            2. Pick a color, then click or drag in free space.
+            {translate('expedition.tutorial2', locale)}
             <br />
-            3. Wait for the saved confirmation.
+            {translate('expedition.tutorial3', locale)}
           </p>
-          <button onClick={() => setTutorial(false)}>Dismiss tutorial</button>
+          <button onClick={() => setTutorial(false)}>
+            {translate('expedition.dismiss', locale)}
+          </button>
         </div>
       )}
       {!hidden && notice && !open && (
@@ -319,12 +323,12 @@ export default function Expedition({
                         url.searchParams.set('x', String(Math.round(x)));
                         url.searchParams.set('y', String(Math.round(y)));
                         void navigator.clipboard.writeText(url.toString()).then(
-                          () => setNotice('Location copied.'),
-                          () => setNotice('Copy unavailable. Use the browser address bar.'),
+                          () => setNotice(translate('expedition.locationCopied', locale)),
+                          () => setNotice(translate('expedition.copyUnavailable', locale)),
                         );
                       }}
                     >
-                      Share location
+                      {translate('expedition.shareLocation', locale)}
                     </button>
                     <button
                       onClick={() => {
