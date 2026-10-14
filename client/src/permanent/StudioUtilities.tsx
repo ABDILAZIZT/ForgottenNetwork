@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import ShopModal, { GEM_SHOP_ITEMS } from '../components/ShopModal';
 import DailyRewardModal from '../components/DailyRewardModal';
 import AdBannerModal from '../components/AdBannerModal';
+import AdSlot from '../components/AdSlot';
 import CommunityPanel from '../components/CommunityPanel';
 import WorldExtras from '../components/WorldExtras';
 import { useWorldRepository } from '../repositories';
@@ -18,6 +19,7 @@ import {
   readClaims,
   readNumber,
   readTier,
+  recordRewardedAd,
   todayKey,
   type SubscriptionTier,
 } from '../economy';
@@ -222,6 +224,9 @@ export default function StudioUtilities({
                 Saved-world community & moderation
               </button>
             </div>
+            {tier !== 'vip' && (
+              <AdSlot slotId="ad-slot-sidebar" position="tools-panel-sidebar" size="rectangle" />
+            )}
             <h3>Saved-world sign-in</h3>
             <p>{user ? user.displayName : 'Not connected to saved worlds'}</p>
             {!user && (
@@ -437,18 +442,8 @@ export default function StudioUtilities({
         onClose={() => setPane('')}
         subscriptionTier={tier}
         adsWatchedToday={dailyCount('fn_ads_today', 'fn_ads_last_date')}
-        onAdWatched={() => {
-          const count = dailyCount('fn_ads_today', 'fn_ads_last_date');
-          if (
-            readTier() === 'vip' ||
-            count >= 3 ||
-            Date.now() - readNumber('fn_last_ad_time') < 180000
-          )
-            return;
-          localStorage.setItem('fn_ads_today', String(count + 1));
-          localStorage.setItem('fn_ads_last_date', todayKey());
-          localStorage.setItem('fn_last_ad_time', String(Date.now()));
-          award(20);
+        onAdWatched={(amount) => {
+          if (recordRewardedAd(amount, readTier())) award(amount);
         }}
       />
       <ShopModal

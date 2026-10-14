@@ -20,7 +20,7 @@ The full `pnpm check` passed from the cached dependencies. For this run, pnpm's 
 
 ## Open gates for later phases
 
-- Ads are not configured. The app has a clearly labelled local sponsor simulation and ad placeholders, but no `ads.ts`, publisher/ad-unit IDs, production ad script, consent-management integration, or `ads.txt`. Google rewarded web inventory uses Ad Manager's GPT format; the web format does not support server-side reward verification. Real ad delivery also needs the publisher's configured consent solution and inventory details.
+- Phase 2 added an opt-in AdSense/GPT integration, consent settings, CSP allowlisting, `ads.txt` placeholder comments and setup docs. Live ads remain disabled because the publisher IDs, certified CMP and seller record are not configured. Rewarded web ads have no server-side verification, and the app's demo balances remain local only.
 - The app's current policies say uploaded images are not semantically scanned and there is no verified guardian-consent workflow. It is not ready to be represented as a fully moderated, child-directed service.
 - Production OpenID Connect, hosted PostgreSQL, object storage, monitoring, and deployment resources remain unconfigured, as recorded in `LAUNCH_READINESS.md`.
 - Root and server runtime requirements now match the documented Node 22.13 minimum. The Render draft now uses the pinned pnpm version, refuses insecure auth-validation bypass, keeps TLS certificate verification enabled, and prompts the operator for OIDC secrets. It remains a free preview template without durable permanent-canvas storage, not a production deployment.

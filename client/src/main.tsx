@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import PermanentWorld from './permanent/PermanentWorld';
 import ErrorBoundary from './components/ErrorBoundary.tsx';
+import { AdConsentNotice } from './components/AdConsent';
 import {
   HttpWorldGateway,
   LocalWorldRepository,
@@ -34,6 +35,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <WorldRepositoryProvider repository={repository}>
       <ErrorBoundary>
+        {!isPolicyPage(location.pathname) && <AdConsentNotice />}
         {isPolicyPage(location.pathname) ? <PolicyPage /> : <PermanentWorld />}
       </ErrorBoundary>
     </WorldRepositoryProvider>

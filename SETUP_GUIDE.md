@@ -76,54 +76,18 @@ Open [localhost:3001](http://localhost:3001/), visit once online, wait for servi
 
 ## إضافة إعلانات جوجل أدسنس
 
-1. Publish useful original content and provide your privacy, contact and content policies. User-generated artwork needs a working moderation/takedown process before monetization.
-2. Apply through [Google AdSense](https://adsense.google.com/), add the site and follow its ownership/review instructions. Approval and timing are not guaranteed.
-3. Use only your issued publisher ID and approved ad units. Add Google's supplied loader to `client/index.html` inside `<head>` after implementing the consent requirements applicable to your audience:
+The repository now has a consent-gated integration path; advertising remains disabled until the publisher account, units, consent platform, and content review are complete. Follow the current [Advertising setup](docs/AD_CONFIGURATION.md) runbook rather than adding a script tag by hand.
 
-```html
-<script
-  async
-  src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ID"
-  crossorigin="anonymous"
-></script>
-```
+- `VITE_ADS_ENABLED` and the server `ADS_ENABLED` default to `false`.
+- The app saves an explicit Allow/Decline choice and waits for the CMP's IAB TCF consent event before loading AdSense or GPT. The in-app setting is not itself a certified CMP.
+- Display units are limited to secondary panels and the store; no automatic interstitial runs over canvas activity. VIP remains ad-free.
+- The dev sponsor is a clearly labeled 15-second simulation. Production uses the Ad Manager GPT rewarded web event and grants local demo gems only after `rewardedSlotGranted`.
+- The local daily cap is 10 for Free and 15 for Artist demo accounts, with a three-minute cooldown. These browser values can be changed; they are not server-verified balances or fraud controls.
+- Replace the comments in `client/public/ads.txt` only with the exact seller record issued for the real publisher account. Do not publish guessed or placeholder IDs.
 
-4. Search for `AD_SLOT_PLACEHOLDER` in `client/src/components/AdSlot.tsx`. Replace its preview content with an approved unit. In React, initialize the unit in an effect once per mounted `<ins>` after the loader is ready; a script string inserted into JSX does not initialize it. Guard against StrictMode double initialization, and handle blocked/unavailable ads without blocking the canvas. Example markup (replace IDs):
+Google rewarded ads for web do not support server-side verification. Rewarded points must remain non-transferable and usable only within the publisher's site. See [Google's rewarded ad policies](https://support.google.com/adsense/answer/9121589?hl=en) and [Ad Manager's rewarded web setup](https://support.google.com/admanager/answer/9116812?hl=en).
 
-```tsx
-<ins
-  className="adsbygoogle"
-  style={{ display: 'block', width: 300, height: 250 }}
-  data-ad-client="ca-pub-YOUR_ID"
-  data-ad-slot="YOUR_UNIT_ID"
-/>
-```
-
-The corresponding browser initialization is `(window.adsbygoogle = window.adsbygoogle || []).push({})`; declare its TypeScript window type when integrating. Run it only on the intended uninitialized unit, not on every render.
-
-| Slot                 | File using AdSlot                          | Intended size         |
-| -------------------- | ------------------------------------------ | --------------------- |
-| `classic-shop`       | `client/src/components/ShopModal.tsx`      | 320×50 mobile banner  |
-| `classic-community`  | `client/src/components/CommunityPanel.tsx` | 300×250 rectangle     |
-| `expedition-sponsor` | `client/src/components/Expedition.tsx`     | 320×50 journey footer |
-
-The reusable component also supports a 728×90 leaderboard. Use it only in a container wide enough; never shrink a real ad through CSS transforms. Placements are inside voluntarily opened panels, away from drawing gestures. Classic VIP suppresses its shop/community placeholders. No automatic interstitial or canvas-obscuring ad is enabled. Verify your network permits the final panel placement before activating it. If it does not, move that unit to an approved dedicated page.
-
-5. Create `client/public/ads.txt` with the exact record from your publisher account, for example:
-
-```text
-google.com, pub-YOUR_ID, DIRECT, f08c47fec0942fa0
-```
-
-Rebuild/deploy and check `/ads.txt` returns plain text, not the SPA HTML.
-
-6. Update the explicit CSP in `server/security.js` for your provider's documented script, frame, image and connection origins. The current restrictive CSP intentionally blocks third-party ad code. Use a staging CSP report-only trial before enabling the minimal required allowlist; do not replace it with wildcards. Add an appropriate consent platform and test refusal as well as acceptance.
-
-`AdBannerModal.tsx` remains a **demo sponsor** timer granting demo gems. It pauses while the tab is hidden. Ordinary AdSense impressions/clicks must not be rewarded. Real rewarded ads require a supported web rewarded format, user opt-in, SDK completion and server-verified/idempotent rewards. Do not connect the timer directly to real currency. Review [Google placement policies](https://support.google.com/adsense/answer/1346295?hl=en) and [rewarded ad policies](https://support.google.com/adsense/answer/9121589?hl=en).
-
-Alternatives to investigate are [Media.net](https://www.media.net/), [Carbon Ads](https://www.carbonads.net/) and [BuySellAds](https://www.buysellads.com/). Eligibility, inventory and formats vary. Measure viewability, retention and load performance, reserve space to avoid layout shifts, and prefer fewer well-placed units. Do not click your own live ads or add arrows, fake rewards, pulsing attention cues or misleading controls around them.
-
-**العربية:** سجّل موقعك في أدسنس واستبدل الأرقام بأرقام حسابك. الإعلانات الحالية نماذج فقط. لا تربط مكافآت العملات بالنقر على إعلان عادي، ولا تفعّل الإعلانات قبل معالجة الموافقة والخصوصية والمحتوى.
+**العربية:** الإعلانات معطلة افتراضياً حتى يجهّز المالك الحساب ومعرّفات الوحدات ومنصة الموافقة المعتمدة. المكافآت تجريبية ومحلية؛ لا يوجد تحقق خادمي من إعلانات الويب.
 
 ## 4. Setting Up Payments (Stripe)
 
@@ -266,21 +230,25 @@ Helmet preserves CSP, nosniff and production HSTS; frames are denied and referre
 | `client/public/icons/icon-192.png`, `icon-512.png` | Code-generated original application icons.                                                                                              |
 | `client/public/icons/social.png`                   | Generated social sharing artwork.                                                                                                       |
 | `server/scripts/generate-brand-assets.js`          | Reproducible Sharp/SVG branding generator.                                                                                              |
-| `server/security.js`                               | DENY framing and explicit referrer policy.                                                                                              |
+| `server/security.js`                               | Explicit security headers and origin policies; Google CSP sources are conditional on `ADS_ENABLED=true`.                                |
 | `client/src/enhancements.css`                      | Additive responsive cyber styling, focus/contrast improvements, motion reduction, weather and cosmetics. Original base styles retained. |
-| `client/src/components/AdSlot.tsx`                 | Reusable labeled ad previews and integration marker comments.                                                                           |
+| `client/src/ads.ts`                                | Explicit local consent choice, TCF gate, conditional AdSense/GPT loaders and rewarded-web lifecycle.                                    |
+| `client/src/components/AdConsent.tsx`              | First-visit Allow/Decline notice and privacy settings controls.                                                                         |
+| `client/src/components/AdSlot.tsx`                 | Consent-gated responsive AdSense slots with labeled development previews.                                                               |
+| `client/src/components/AdBannerModal.tsx`          | Development sponsor simulation and opt-in GPT rewarded-ad modal.                                                                        |
+| `client/public/ads.txt`                            | Comment-only template; replace with the actual authorized publisher record.                                                             |
+| `docs/AD_CONFIGURATION.md`                         | Publisher, TCF consent, slot, `ads.txt`, reward and launch configuration guide.                                                         |
 | `client/src/components/MarketCatalog.tsx`          | Categories, catalog, confirmations, ownership, demo coin top-up, confetti and honest cash previews.                                     |
 | `client/src/components/CreativeStudio.tsx`         | Usable purchased brushes, glow, ten stamps, gradients, palettes and PNG export.                                                         |
 | `client/src/components/Expedition.tsx`             | Journey, market, weather/CRT, cosmetic toggle, discovery, sharing, tutorial, activity, pull-refresh and haptics.                        |
 | `client/src/exploration.ts`                        | Local achievements, pixel/activity accounting and bounded history.                                                                      |
-| `client/src/economy.ts`                            | Validated demo catalog/ledger, exact requested item prices, bundles/packs; resilient numeric storage reads.                             |
+| `client/src/economy.ts`                            | Validated local demo catalog/ledger, 10/15 rewarded-ad limits, random rewards and a three-minute local cooldown.                        |
 | `client/src/market.test.ts`                        | Purchase deduction/duplicate/insufficient-fund/storage-failure and progress tests.                                                      |
 | `client/src/App.tsx`                               | Expedition integration for Classic navigation, drawing and refresh.                                                                     |
 | `client/src/permanent/PermanentWorld.tsx`          | Expedition/live activity, welcome polish/ambient toggle, lazy avatars, profile name and keyboard minimap access.                        |
-| `client/src/components/ShopModal.tsx`              | Creator Collection entry plus contextual sponsor slot; original shop retained.                                                          |
-| `client/src/components/CommunityPanel.tsx`         | Contextual rectangle sponsor preview.                                                                                                   |
+| `client/src/components/ShopModal.tsx`              | Creator Collection entry, between-item and footer ad placements; original shop retained.                                                |
+| `client/src/components/CommunityPanel.tsx`         | Contextual rectangle ad placement in the secondary panel.                                                                               |
 | `client/src/components/OnboardingFlow.tsx`         | Modal focus, cinematic text/particles and opt-in synthesized ambience with cleanup.                                                     |
-| `client/src/components/AdBannerModal.tsx`          | Clearly labeled demo reward and visible-tab timer.                                                                                      |
 | `client/src/components/useModal.ts`                | Textarea/summary focus support; robust trapping with empty/removed controls.                                                            |
 | `client/src/engine/Engine.ts`                      | Painted-pixel activity accounting and wheel guard while modals are open.                                                                |
 | `client/src/engine/Atmosphere.ts`                  | Particle drift normalized to elapsed time.                                                                                              |
@@ -296,8 +264,8 @@ Implemented deviations are intentional: no fabricated scarcity/social proof, no 
 
 **العربية:** تمت إضافة التحسينات مع إبقاء وظائف المشروع الأصلية. بعض الميزات ظاهرة كمعاينة بوضوح لأنها تحتاج دعماً حقيقياً من الخادم. راجع متطلبات الإطلاق أعلاه قبل نشر الموقع للعامة.
 
-## Delivery verification — 4 October 2026
+## Delivery verification — 14 October 2026
 
-`pnpm check` passed: formatting, lint, 82 tests (3 shared + 40 client + 39 server), TypeScript and the Vite production build. The development server started successfully and was stopped after browser checks. Browser checks covered Classic onboarding, permanent-mode Expedition, 390×844 and 1440×900 layouts, demo purchase deduction/ownership, unlocked Studio tool selection, and Escape restoring focus. No browser error logs were captured in the final smoke check. Hosted authentication, real ads/payments, physical mobile haptics and a browser-level offline installation remain unverified.
+`pnpm check` passed: formatting, lint, 108 tests (3 shared + 54 client + 51 server), TypeScript and the Vite production build. Local browser/API smoke checks and earlier 390×844 and 1440×900 UI checks passed. Current ad activation was not tested against Google's live network because no publisher IDs or CMP account are configured. Hosted authentication, real billing, physical mobile haptics and a browser-level offline installation remain unverified.
 
-`ARCHIVE-MANIFEST.json` is an older supplied inventory: only its formatting was normalized; its hashes describe the earlier delivery, not this one. The final ZIP contains all physical project files, including existing local data and dependency files. `DEPENDENCY_LINKS.json` at ZIP root records pnpm directory links without recursively duplicating or following cycles; run `pnpm install --frozen-lockfile` after extraction to recreate links. Keep this archive private because it includes local application data.
+`ARCHIVE-MANIFEST.json` and `DEPENDENCY_LINKS.json` are supplied archive metadata from an earlier delivery and do not describe this source update. The review ZIP created for this work contains source files only; it omits Git metadata, installed dependencies, build output and local runtime data. Run `pnpm install --frozen-lockfile` after extraction to recreate dependencies.

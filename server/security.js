@@ -2,16 +2,35 @@ const crypto = require('node:crypto');
 const helmet = require('helmet');
 
 function securityHeaders(app) {
+  const adsEnabled = process.env.ADS_ENABLED === 'true';
+  const adScriptSources = adsEnabled
+    ? [
+        'https://pagead2.googlesyndication.com',
+        'https://securepubads.g.doubleclick.net',
+        'https://fundingchoicesmessages.google.com',
+      ]
+    : [];
+  const adFrameSources = adsEnabled
+    ? [
+        'https://googleads.g.doubleclick.net',
+        'https://securepubads.g.doubleclick.net',
+        'https://tpc.googlesyndication.com',
+      ]
+    : [];
+  const adImageSources = adsEnabled
+    ? ['https://*.doubleclick.net', 'https://*.googlesyndication.com']
+    : [];
   app.use(
     helmet({
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'"],
+          scriptSrc: ["'self'", ...adScriptSources],
           styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
           fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-          imgSrc: ["'self'", 'data:', 'blob:'],
-          connectSrc: ["'self'"],
+          imgSrc: ["'self'", 'data:', 'blob:', ...adImageSources],
+          frameSrc: ["'self'", ...adFrameSources],
+          connectSrc: ["'self'", ...(adsEnabled ? ['https://securepubads.g.doubleclick.net'] : [])],
           upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
         },
       },

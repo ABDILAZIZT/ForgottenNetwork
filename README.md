@@ -2,7 +2,7 @@
 
 Forgotten Network is a collaborative canvas built with React, TypeScript, Canvas 2D, native WebSockets, and an append-only SQLite ownership store with recoverable owner revisions. One studio now serves all entry links. Previous three-layer worlds remain accessible through **Tools & saved worlds**, without automatic migration or publication.
 
-> The permanent canvas is implemented for local use. Public deployment still requires durable storage, off-machine backups, abuse controls, and realistic load testing. Read [the permanent canvas guide](docs/PERMANENT_CANVAS.md) before deployment. The older [launch readiness](docs/LAUNCH_READINESS.md) applies to Classic Studio.
+> The permanent canvas is implemented for local use. Public deployment still requires durable storage, off-machine backups, abuse controls, and realistic load testing. Read [the permanent canvas guide](docs/PERMANENT_CANVAS.md) and [launch readiness](docs/LAUNCH_READINESS.md) before deployment.
 
 ## Requirements
 
@@ -74,6 +74,10 @@ Classic Studio remote mode connects the repository to versioned, idempotent shar
 
 `PermanentWorld` is the only application entry. The obsolete `App`, `WorldOverlay`, Classic onboarding, `PixelEditor`, and `EntityCreatorModal` were removed because they had no callers. `RasterStudio` provides local image editing and versioned owner revisions; `StudioUtilities` preserves saved-world access. See [the migration map and limitations](docs/STUDIO_MIGRATION.md).
 
+## Advertising status
+
+Google display and rewarded ad integration is disabled by default. Production ad scripts require the visitor's saved Allow choice and an allowed IAB TCF event from a configured CMP. Local reward caps and gems remain device-only demos; Google rewarded web ads do not provide server-side verification. See [advertising setup](docs/AD_CONFIGURATION.md) and [trust and safety limits](docs/TRUST_AND_SAFETY.md).
+
 ## Documentation
 
 - [Permanent canvas: operation, guarantees, backup and recovery](docs/PERMANENT_CANVAS.md)
@@ -93,3 +97,6 @@ Classic Studio remote mode connects the repository to versioned, idempotent shar
 - [Phase 5 PostgreSQL and authentication](docs/PHASE_5_IMPLEMENTATION.md)
 - [Phase 6 staging preparation](docs/PHASE_6_IMPLEMENTATION.md)
 - [Current launch readiness, operator commands and remaining gates](docs/LAUNCH_READINESS.md)
+- [Advertising configuration and consent gates](docs/AD_CONFIGURATION.md)
+- [Trust, safety and privacy audit](docs/TRUST_AND_SAFETY.md)
+- [Phase 1 audit and environment notes](docs/PHASE_1_AUDIT.md)

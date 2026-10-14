@@ -33,6 +33,38 @@ export function dailyCount(key: string, dateKey: string, now = new Date()) {
   return localStorage.getItem(dateKey) === todayKey(now) ? readNumber(key) : 0;
 }
 
+export const REWARDED_AD_COOLDOWN_MS = 3 * 60 * 1000;
+
+export function rewardedAdLimit(tier: SubscriptionTier) {
+  return tier === 'free' ? 10 : 15;
+}
+
+export function randomAdReward(random: () => number = Math.random) {
+  return 15 + Math.min(10, Math.max(0, Math.floor(random() * 11)));
+}
+
+export function canWatchRewardedAd(tier: SubscriptionTier, now = Date.now()) {
+  if (tier === 'vip') return false;
+  if (dailyCount('fn_ads_today', 'fn_ads_last_date', new Date(now)) >= rewardedAdLimit(tier))
+    return false;
+  return now - readNumber('fn_last_ad_time') >= REWARDED_AD_COOLDOWN_MS;
+}
+
+// This ledger is a local demo convenience, not authoritative reward verification.
+export function recordRewardedAd(amount: number, tier: SubscriptionTier, now = Date.now()) {
+  if (!Number.isInteger(amount) || amount < 15 || amount > 25 || !canWatchRewardedAd(tier, now))
+    return null;
+  const count = dailyCount('fn_ads_today', 'fn_ads_last_date', new Date(now));
+  try {
+    localStorage.setItem('fn_ads_today', String(count + 1));
+    localStorage.setItem('fn_ads_last_date', todayKey(new Date(now)));
+    localStorage.setItem('fn_last_ad_time', String(now));
+    return count + 1;
+  } catch {
+    return null;
+  }
+}
+
 export function effectiveStreak(now = new Date()): number {
   const last = new Date(localStorage.getItem('fn_last_reward_date') || '');
   // Compare calendar dates in UTC to avoid daylight-saving 23/25-hour days.

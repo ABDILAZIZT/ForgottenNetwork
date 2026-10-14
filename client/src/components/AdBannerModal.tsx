@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Coins, Play, Sparkles, Tv, X } from 'lucide-react';
 import type { SubscriptionTier } from './SubscriptionBadge';
-import { dailyCount, readNumber } from '../economy';
+import {
+  canWatchRewardedAd,
+  dailyCount,
+  randomAdReward,
+  readNumber,
+  REWARDED_AD_COOLDOWN_MS,
+  rewardedAdLimit,
+} from '../economy';
+import { readAdConsent, rewardedAdsConfigured, showRewardedAd } from '../ads';
 import { useModal } from './useModal';
 
 interface Props {
@@ -13,8 +21,6 @@ interface Props {
 }
 
 const adDuration = 15;
-const cooldownMs = 3 * 60 * 1000;
-const maxAds = 3;
 
 function formatCooldown(ms: number) {
   const total = Math.max(0, Math.ceil(ms / 1000));
@@ -33,6 +39,8 @@ export default function AdBannerModal({
   const [isPlaying, setIsPlaying] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(adDuration);
   const [completed, setCompleted] = useState(false);
+  const [rewardAmount, setRewardAmount] = useState(0);
+  const [notice, setNotice] = useState('');
   const [now, setNow] = useState(Date.now());
   const callback = useRef(onAdWatched);
   callback.current = onAdWatched;
@@ -43,6 +51,8 @@ export default function AdBannerModal({
     setCompleted(false);
     setSecondsLeft(adDuration);
     setNow(Date.now());
+    setRewardAmount(0);
+    setNotice('');
   }, [isOpen, subscriptionTier]);
 
   useEffect(() => {
@@ -52,7 +62,7 @@ export default function AdBannerModal({
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isPlaying || !isOpen || subscriptionTier === 'vip') return;
+    if (!import.meta.env.DEV || !isPlaying || !isOpen || subscriptionTier === 'vip') return;
     let remainingMs = adDuration * 1000;
     let previous = Date.now();
     setSecondsLeft(adDuration);
@@ -66,15 +76,18 @@ export default function AdBannerModal({
         window.clearInterval(timer);
         setIsPlaying(false);
         setCompleted(true);
-        callback.current(20, dailyCount('fn_ads_today', 'fn_ads_last_date') + 1);
+        const amount = randomAdReward();
+        setRewardAmount(amount);
+        callback.current(amount, dailyCount('fn_ads_today', 'fn_ads_last_date') + 1);
       }
     }, 250);
     return () => window.clearInterval(timer);
   }, [isOpen, isPlaying, subscriptionTier]);
 
+  const maxAds = rewardedAdLimit(subscriptionTier);
   const remaining = Math.max(0, maxAds - adsWatchedToday);
   const lastAdTime = readNumber('fn_last_ad_time');
-  const cooldownRemaining = Math.max(0, cooldownMs - (now - lastAdTime));
+  const cooldownRemaining = Math.max(0, REWARDED_AD_COOLDOWN_MS - (now - lastAdTime));
   const isCoolingDown = cooldownRemaining > 0 && !completed;
   const atLimit = remaining <= 0;
   const ringProgress = useMemo(
@@ -85,13 +98,37 @@ export default function AdBannerModal({
   if (!isOpen || subscriptionTier === 'vip') return null;
 
   const startAd = () => {
-    if (
-      Date.now() - readNumber('fn_last_ad_time') < cooldownMs ||
-      dailyCount('fn_ads_today', 'fn_ads_last_date') >= maxAds
-    )
-      return;
+    if (!canWatchRewardedAd(subscriptionTier)) return;
     setCompleted(false);
+    setNotice('');
+    if (import.meta.env.DEV) {
+      setIsPlaying(true);
+      return;
+    }
+    if (!rewardedAdsConfigured()) {
+      setNotice('Live ads are not configured. You can keep using the canvas without ads.');
+      return;
+    }
+    if (readAdConsent() !== 'accepted') {
+      setNotice('Allow optional ads in the Cookies & device storage settings first.');
+      return;
+    }
     setIsPlaying(true);
+    void showRewardedAd().then((result) => {
+      setIsPlaying(false);
+      if (result === 'granted') {
+        const amount = randomAdReward();
+        setRewardAmount(amount);
+        setCompleted(true);
+        callback.current(amount, dailyCount('fn_ads_today', 'fn_ads_last_date') + 1);
+      } else {
+        setNotice(
+          result === 'closed'
+            ? 'No reward was granted because the ad was closed before completion.'
+            : 'No rewarded ad is available right now. Try again later.',
+        );
+      }
+    });
   };
 
   return (
@@ -101,7 +138,8 @@ export default function AdBannerModal({
         ref={modalRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Sponsor Screen"
+        aria-label="Rewarded sponsor ad"
+        data-ad-slot="ad-slot-rewarded"
         tabIndex={-1}
       >
         {completed && (
@@ -118,14 +156,18 @@ export default function AdBannerModal({
         <div className="fn-ad-header">
           <Tv size={28} className="ad-icon" />
           <div>
-            <h3>Sponsor Screen</h3>
-            <p>Demo sponsor preview. Complete 15 seconds to earn 20 demo gems.</p>
+            <h3>{import.meta.env.DEV ? 'Demo sponsor preview' : 'Rewarded sponsor ad'}</h3>
+            <p>
+              {import.meta.env.DEV
+                ? 'Preview only. Complete 15 seconds to earn 15–25 demo gems.'
+                : 'Choose to watch a rewarded ad for 15–25 demo gems. The amount is selected at random.'}
+            </p>
           </div>
         </div>
 
         <div className="ad-preview-screen">
           <div className="scanlines" />
-          {isPlaying ? (
+          {isPlaying && import.meta.env.DEV ? (
             <div className="ad-playing-container">
               <svg className="countdown-ring" width="118" height="118" viewBox="0 0 118 118">
                 <circle cx="59" cy="59" r="50" className="ring-bg" />
@@ -138,13 +180,19 @@ export default function AdBannerModal({
                 />
               </svg>
               <strong>{secondsLeft}</strong>
-              <span>broadcast seconds remaining</span>
+              <span>demo preview seconds remaining</span>
+            </div>
+          ) : isPlaying ? (
+            <div className="ad-playing-container">
+              <Sparkles size={42} className="pulse-sparkle" />
+              <strong>Waiting for a rewarded ad</strong>
+              <span>Close the ad any time. No reward is given unless it is granted.</span>
             </div>
           ) : completed ? (
             <div className="ad-completed">
               <Check size={48} className="check-icon" />
               <h4>Signal complete</h4>
-              <p>+20 gems added to your account.</p>
+              <p>+{rewardAmount} demo gems added on this device.</p>
             </div>
           ) : (
             <div className="ad-placeholder">
@@ -158,14 +206,32 @@ export default function AdBannerModal({
         </div>
 
         {!isPlaying && !completed && (
-          <button className="watch-ad-btn" onClick={startAd} disabled={isCoolingDown || atLimit}>
+          <button
+            className="watch-ad-btn"
+            onClick={startAd}
+            disabled={
+              isCoolingDown ||
+              atLimit ||
+              (!import.meta.env.DEV && (!rewardedAdsConfigured() || readAdConsent() !== 'accepted'))
+            }
+          >
             <Play size={18} />
             {atLimit
               ? 'Daily ad limit reached'
               : isCoolingDown
                 ? `Cooldown ${formatCooldown(cooldownRemaining)}`
-                : 'Play demo sponsor (+20 demo gems)'}
+                : import.meta.env.DEV
+                  ? 'Play demo preview (+15–25 demo gems)'
+                  : readAdConsent() !== 'accepted'
+                    ? 'Allow optional ads in Privacy settings'
+                    : 'Watch a rewarded ad (+15–25 demo gems)'}
           </button>
+        )}
+
+        {notice && (
+          <p role="status" className="fn-ad-notice">
+            {notice}
+          </p>
         )}
 
         {completed && (
@@ -175,7 +241,7 @@ export default function AdBannerModal({
         )}
 
         <div className="ad-footer-note">
-          {remaining} of {maxAds} ads remaining today
+          {adsWatchedToday} watched · {remaining} of {maxAds} remaining today
         </div>
       </div>
 
@@ -297,6 +363,7 @@ export default function AdBannerModal({
         }
         .watch-ad-btn.done-btn { background: #00e6b8; color: #03110e; }
         .ad-footer-note { margin-top: 12px; color: #64748b; text-align: center; font-size: 0.76rem; }
+        .fn-ad-notice { color: #fbbf24; text-align: center; line-height: 1.45; }
         .gem-rain { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
         .gem-rain span {
           position: absolute;

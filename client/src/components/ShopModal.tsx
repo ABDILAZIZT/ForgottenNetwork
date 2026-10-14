@@ -92,7 +92,7 @@ const featureRows = [
   ['Palette', 'All + custom', 'All + custom', 'All + custom'],
   ['Activation gems', '-', '300 once', '800 total'],
   ['Local land claims', 'Gem license', 'Gem license', 'Up to 3 chunks'],
-  ['Ads', '3/day available', '3/day available', 'Ad-free'],
+  ['Optional rewarded ads', 'Up to 10/day', 'Up to 15/day', 'Ad-free'],
 ];
 
 const bundles = [
@@ -318,7 +318,7 @@ export default function ShopModal({
           >
             🎨 {collection ? 'Hide' : 'Explore'} Creator Collection & Studio
           </button>
-          {collection && <MarketCatalog />}
+          {collection && <MarketCatalog showAds={subscriptionTier !== 'vip'} />}
           {activeTab === 'subscriptions' && (
             <>
               <p>
@@ -422,10 +422,10 @@ export default function ShopModal({
             <div className="fn-items-grid">
               {GEM_SHOP_ITEMS.filter((item) =>
                 ['chunk_visitor_map', 'teleport_beacon', 'land_license'].includes(item.id),
-              ).map((item) => {
+              ).map((item, index) => {
                 const owned = ownedItems.includes(item.id) && !item.repeatable;
                 const disabled = owned || userGems < item.cost;
-                return (
+                return [
                   <div key={item.id} className="item-box">
                     <div className="item-icon">{item.icon}</div>
                     <div className="item-title-row">
@@ -445,8 +445,18 @@ export default function ShopModal({
                           ? `${item.cost} gems`
                           : 'Not enough gems'}
                     </button>
-                  </div>
-                );
+                  </div>,
+                  ...(index === 0 && subscriptionTier !== 'vip'
+                    ? [
+                        <AdSlot
+                          key="ad-slot-marketplace-feed"
+                          slotId="ad-slot-marketplace-feed"
+                          size="rectangle"
+                          position="marketplace-feed"
+                        />,
+                      ]
+                    : []),
+                ];
               })}
             </div>
           )}
@@ -468,7 +478,7 @@ export default function ShopModal({
                 <span>
                   {subscriptionTier === 'vip'
                     ? 'Ad-free'
-                    : `${Math.max(0, 3 - adsWatchedToday)} of 3`}
+                    : `${Math.max(0, (subscriptionTier === 'artist' ? 15 : 10) - adsWatchedToday)} remaining`}
                 </span>
                 <small>Ads remaining today</small>
               </div>
@@ -503,7 +513,7 @@ export default function ShopModal({
 
         <div className="fn-shop-footer">
           {subscriptionTier !== 'vip' && (
-            <AdSlot slotId="classic-shop" size="banner" position="shop-footer" />
+            <AdSlot slotId="ad-slot-footer" size="banner" position="shop-footer" />
           )}
           <p>Demo only: memberships, gems, and claims are saved on this device.</p>
           <p>Live billing and shared land protection are not connected.</p>

@@ -387,7 +387,9 @@ export default function CommunityPanel({
           </details>
         </fieldset>
       )}
-      {readTier() !== 'vip' && <AdSlot slotId="classic-community" position="community-footer" />}
+      {readTier() !== 'vip' && (
+        <AdSlot slotId="ad-slot-sidebar" position="community-panel-footer" />
+      )}
     </section>
   );
 }

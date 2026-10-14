@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Compass, X } from 'lucide-react';
 import { readExploration, recordExploration } from '../exploration';
-import { readMarket } from '../economy';
+import { readMarket, readTier } from '../economy';
 import { useModal } from './useModal';
 import MarketCatalog from './MarketCatalog';
 import AdSlot from './AdSlot';
@@ -29,6 +29,7 @@ export default function Expedition({
   const [tab, setTab] = useState('journey');
   const [progress, setProgress] = useState(readExploration);
   const [owned, setOwned] = useState(() => readMarket().owned);
+  const [tier] = useState(readTier);
   const [weather, setWeather] = useState('off');
   const [cycle, setCycle] = useState(false);
   const [scanlines, setScanlines] = useState(false);
@@ -215,7 +216,7 @@ export default function Expedition({
               }}
             >
               {tab === 'market' ? (
-                <MarketCatalog />
+                <MarketCatalog showAds={tier !== 'vip'} />
               ) : tab === 'atmosphere' ? (
                 <section className="fn-preferences">
                   <h3>Set the atmosphere</h3>
@@ -368,7 +369,9 @@ export default function Expedition({
                       <p>No marks recorded yet. Explore and draw to start your story.</p>
                     )}
                   </div>
-                  <AdSlot slotId="expedition-sponsor" size="banner" position="journey-footer" />
+                  {tier !== 'vip' && (
+                    <AdSlot slotId="ad-slot-footer" size="banner" position="journey-footer" />
+                  )}
                 </section>
               )}
               <p role="status">{notice}</p>

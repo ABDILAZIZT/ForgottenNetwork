@@ -1,0 +1,2 @@
+# Add the real publisher authorization record only after the operator receives a Google publisher ID.
+# Do not publish placeholder or guessed seller IDs.

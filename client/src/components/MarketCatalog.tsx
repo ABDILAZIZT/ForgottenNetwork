@@ -10,8 +10,9 @@ import {
   type MarketItem,
 } from '../economy';
 import CreativeStudio from './CreativeStudio';
+import AdSlot from './AdSlot';
 
-export default function MarketCatalog() {
+export default function MarketCatalog({ showAds }: { showAds: boolean }) {
   const [category, setCategory] = useState<MarketCategory | 'Bundles'>('Tools');
   const [ledger, setLedger] = useState(readMarket);
   const [pending, setPending] = useState<MarketItem | null>(null);
@@ -34,6 +35,7 @@ export default function MarketCatalog() {
   };
   return (
     <section className="fn-market" aria-label="Creator collection">
+      {showAds && <AdSlot slotId="ad-slot-top-banner" size="leaderboard" position="market-top" />}
       <div className="fn-market-feature">
         <span>THE CREATOR COLLECTION / 01</span>
         <h2>

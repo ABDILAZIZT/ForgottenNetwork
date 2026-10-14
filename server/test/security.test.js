@@ -46,6 +46,26 @@ test('security headers and origin checks allow same-origin writes, reject cross-
     await new Promise((resolve) => server.close(resolve));
   }
 });
+test('Google ad hosts enter the Content Security Policy only when advertising is enabled', async () => {
+  const previous = process.env.ADS_ENABLED;
+  process.env.ADS_ENABLED = 'true';
+  const app = express();
+  securityHeaders(app);
+  app.get('/', (_req, res) => res.send('ok'));
+  const server = app.listen(0);
+  await new Promise((resolve) => server.once('listening', resolve));
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}`);
+    const csp = response.headers.get('content-security-policy');
+    assert.match(csp, /https:\/\/pagead2\.googlesyndication\.com/);
+    assert.match(csp, /https:\/\/securepubads\.g\.doubleclick\.net/);
+    assert.match(csp, /frame-src 'self' https:\/\/googleads\.g\.doubleclick\.net/);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    if (previous === undefined) delete process.env.ADS_ENABLED;
+    else process.env.ADS_ENABLED = previous;
+  }
+});
 test('media decoder rejects forged MIME, unsupported, malformed and oversized dimensions', async () => {
   const png = await sharp({ create: { width: 2, height: 2, channels: 4, background: '#00ffcc' } })
     .png()

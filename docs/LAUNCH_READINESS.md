@@ -17,6 +17,13 @@ Updated 2026-10-14. This document describes the current implementation; earlier 
 - Media is immutable by ID; replacement requires a new upload ID. Successful upload responses contain metadata, not another copy of the image in the idempotency log.
 - Server validates entity metadata, layer fields, permitted asset references, ownership and region restrictions.
 
+### Advertising
+
+- AdSense display slots and a Google Ad Manager GPT rewarded-web path are implemented behind opt-in configuration. Both production ad tags wait for the visitor's local Allow choice and an allowed IAB TCF consent event. The server only adds Google CSP sources when `ADS_ENABLED=true`.
+- No publisher account, unit IDs, certified CMP, or valid `ads.txt` seller record is configured. `VITE_ADS_ENABLED` and `ADS_ENABLED` remain false by default; no live ad delivery is active.
+- Development uses a labeled sponsor simulation. Production GPT rewards are 15–25 local demo gems, with a 10/day Free or 15/day Artist device limit and a three-minute device cooldown. VIP remains ad-free. Browser storage is editable, and Google rewarded web ads do not provide server-side verification; these are not trusted or cash-equivalent balances.
+- No automatic loading/teleport interstitial is implemented. Display placements are restricted to optional secondary panels and the store so they do not cover drawing controls.
+
 ### Moderation, history and reliability
 
 - Reports for an entity or the current 128×128 chunk; moderator queue, hide/unhide, report resolution/dismissal, 30-day publishing suspensions and reinstatement.
@@ -39,7 +46,7 @@ Updated 2026-10-14. This document describes the current implementation; earlier 
 
 ## Local verification
 
-Latest completed checks (2026-10-14): `pnpm check` passed (104 tests: 3 shared, 51 client, 50 server), plus a local browser/API smoke check. `pnpm audit --prod` previously reported no known vulnerabilities after upgrading the transitive query parser for [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g) and [GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx). An advisory scan is not a penetration test or a guarantee of security.
+Latest completed checks (2026-10-14): `pnpm check` passed (108 tests: 3 shared, 54 client, 51 server), plus a local browser/API smoke check. `pnpm audit --prod` previously reported no known vulnerabilities after upgrading the transitive query parser for [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g) and [GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx). An advisory scan is not a penetration test or a guarantee of security.
 
 Run `pnpm check` for formatting, lint, tests and production build. Server tests use temporary embedded PostgreSQL by default and do not touch `server/db.json` or a hosted database. For native integration, supply `TEST_DATABASE_URL` pointing to a disposable localhost database whose name ends in `_test`; use a fresh database for each run.
 
@@ -100,6 +107,7 @@ Rollback: retain the previous application build and a verified backup. Prefer an
 - Provision and verify real OIDC, cookie security, logout, session expiry and two independent browser accounts; test wrong-account ownership and moderator actions through actual sessions.
 - Run the native PostgreSQL CI job and staged concurrent-load tests. Test the configured private bucket, denied direct public access, provider outages and native backup restoration.
 - Activate uptime/database/storage alerts, error-log collection, backup schedules and an on-call contact. Request logs and health endpoints are implemented; external monitoring is not configured.
+- Before monetization, configure the publisher account, real display/rewarded unit IDs, Google-certified IAB TCF CMP, exact `/ads.txt` seller record, and operator privacy disclosures. Review user-generated imagery and child-safety readiness before enabling any ads.
 - Complete scale controls: entity viewport pagination, paged/streamed full-world export and request/load sizing. Current entity listing/full export are intended for small test worlds, not unrestricted public scale.
 - Reconcile draft policy with snapshot persistence. Current defaults are 600 API requests/minute/IP, 120 mutations/minute/member, 5 reports/hour/IP, 5,000 chunk writes/day, 100 entity writes/day and 30 uploads/day. The draft per-stroke affected-pixel budgets and active-entity cap are not yet implemented. Tune and enforce final budgets before inviting untrusted traffic.
 - Finish the retention/account-deletion workflow, orphan-asset cleanup and report categorization/deduplication. Existing history is retained; no destructive automatic purge is enabled. Approve retention and privacy terms with the actual hosting region and operator requirements.
