@@ -34,16 +34,16 @@ The project also preserves earlier saved worlds through **Tools & saved worlds**
 
 ## What you can do
 
-|                           | Experience                                                                                                          |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| **Draw & edit**           | Brushes, pixel tools, shapes, text, color palettes, and a raster studio with up to eight temporary layers.          |
-| **Create together**       | Live cursors, drawing previews, chat, reactions, and server-enforced artwork ownership.                             |
-| **Explore**               | Pan and zoom, use the minimap, discover neighborhoods, and share a link to a location.                              |
-| **Keep your identity**    | Create an artist identity and download a private recovery key. Owner edits retain recoverable history.              |
-| **Build a collection**    | Daily challenges, visit streaks, and a Creator Collection with local demo rewards.                                  |
-| **Choose your interface** | English or Arabic for the main shell, onboarding, selected settings, and policy navigation; reduced-motion support. |
+|                        | Experience                                                                                                                    |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| **Draw & edit**        | Brushes, pixel tools, shapes, text, color palettes, and a raster studio with up to eight temporary layers.                    |
+| **Create together**    | Live cursors, drawing previews, chat, reactions, and server-enforced artwork ownership.                                       |
+| **Explore**            | Pan and zoom, use the minimap, discover neighborhoods, and share a link to a location.                                        |
+| **Keep your identity** | Create an artist identity and download a private recovery key. Owner edits retain recoverable history.                        |
+| **Build a collection** | Daily challenges, visit streaks, and a Creator Collection with local demo rewards.                                            |
+| **Simple media tools** | Upload images or GIFs, choose a thumbnail, place a private draft, and publish. English interface with reduced-motion support. |
 
-The full editor, moderation tools, and legal text are not yet translated. Uploaded images require moderator approval. Demo balances stay on the device and have no cash value. Details are in [localization](docs/POLISH_AND_LOCALIZATION.md), [safety](docs/TRUST_AND_SAFETY.md), and [rewards](docs/PHASE_3_IMPLEMENTATION.md).
+The interface is English. Main-canvas uploads stay private until you publish artwork or an avatar using them; Classic remote uploads retain moderator review. Demo balances stay on the device and have no cash value. Details are in [localization](docs/POLISH_AND_LOCALIZATION.md), [safety](docs/TRUST_AND_SAFETY.md), and [rewards](docs/PHASE_3_IMPLEMENTATION.md).
 
 ## Quick start
 

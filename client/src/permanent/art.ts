@@ -7,40 +7,92 @@ const frames = new Map<string, GifFrame[]>();
 const loading = new Map<string, Promise<void>>();
 const tiles = new Map<string, HTMLCanvasElement>();
 const failedUntil = new Map<string, number>();
+const sources = new Map<string, Promise<string>>();
+let mediaToken: string | undefined;
+let mediaEpoch = 0;
+
+export function resetArtMedia() {
+  mediaEpoch++;
+  for (const source of sources.values())
+    void source.then(URL.revokeObjectURL).catch(() => undefined);
+  sources.clear();
+  images.clear();
+  frames.clear();
+  loading.clear();
+  tiles.clear();
+  failedUntil.clear();
+}
+export function setArtSession(token?: string) {
+  if (token === mediaToken) return;
+  resetArtMedia();
+  mediaToken = token;
+}
+export function mediaSource(id: string, own = false): Promise<string> {
+  const cached = sources.get(id);
+  if (cached) return cached;
+  const token = mediaToken;
+  const epoch = mediaEpoch;
+  const url = '/api/canvas/assets/' + encodeURIComponent(id);
+  const pending = (async () => {
+    const preview = () =>
+      fetch(url + '/preview', {
+        headers: { Authorization: 'Bearer ' + token },
+        signal: AbortSignal.timeout(20000),
+      });
+    let response =
+      own && token ? await preview() : await fetch(url, { signal: AbortSignal.timeout(20000) });
+    if (!own && response.status === 404 && token) response = await preview();
+    if (!response.ok) throw new Error('Image unavailable. Refresh your uploads or try again.');
+    const blob = await response.blob();
+    if (epoch !== mediaEpoch)
+      throw new Error('Your image session changed. Select the image again.');
+    return URL.createObjectURL(blob);
+  })();
+  sources.set(id, pending);
+  void pending.catch(() => {
+    if (sources.get(id) === pending) sources.delete(id);
+  });
+  return pending;
+}
 
 export async function loadArt(e: Placement) {
   const id = e.content.assetId;
   if (!id) return;
   if (loading.has(id)) return loading.get(id);
   if (images.has(id) || frames.has(id)) return;
-  const promise = e.content.animated
-    ? GifDecoder.decode('/api/canvas/assets/' + id).then((decoded) => {
-        frames.set(id, decoded);
-      })
-    : new Promise<void>((resolve, reject) => {
-        const img = new Image();
-        const timeout = setTimeout(() => {
-          img.src = '';
-          reject(new Error('Image loading timed out. Try export again.'));
-        }, 15000);
-        img.onload = () => {
-          clearTimeout(timeout);
-          images.set(id, img);
-          resolve();
-        };
-        img.onerror = () => {
-          clearTimeout(timeout);
-          reject(new Error('Image unavailable'));
-        };
-        img.src = '/api/canvas/assets/' + id;
-      });
+  const epoch = mediaEpoch;
+  const promise = mediaSource(id).then((source) =>
+    e.content.animated
+      ? GifDecoder.decode(source).then((decoded) => {
+          if (epoch === mediaEpoch) frames.set(id, decoded);
+        })
+      : new Promise<void>((resolve, reject) => {
+          const img = new Image();
+          const timeout = setTimeout(() => {
+            img.src = '';
+            reject(new Error('Image loading timed out. Try export again.'));
+          }, 15000);
+          img.onload = () => {
+            clearTimeout(timeout);
+            if (epoch === mediaEpoch) images.set(id, img);
+            resolve();
+          };
+          img.onerror = () => {
+            clearTimeout(timeout);
+            reject(new Error('Image unavailable'));
+          };
+          img.src = source;
+        }),
+  );
   loading.set(id, promise);
   try {
     await promise;
   } catch (error) {
-    loading.delete(id);
-    images.delete(id);
-    failedUntil.set(id, Date.now() + 5000);
+    if (epoch === mediaEpoch) {
+      loading.delete(id);
+      images.delete(id);
+      failedUntil.set(id, Date.now() + 5000);
+    }
     throw error;
   }
 }

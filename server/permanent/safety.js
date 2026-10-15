@@ -1,5 +1,5 @@
 const { randomUUID } = require('node:crypto');
-const RULES_VERSION = '2026-10-06';
+const RULES_VERSION = '2026-10-15';
 const categories = [
   'sexual-content',
   'child-safety',
@@ -21,6 +21,7 @@ function initializeSafety(store) {
     CREATE TABLE IF NOT EXISTS canvas_hidden_media(asset_id TEXT PRIMARY KEY,actor_id TEXT NOT NULL,created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS canvas_hidden_chat(message_id TEXT PRIMARY KEY,actor_id TEXT NOT NULL,created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS canvas_pending_media(asset_id TEXT PRIMARY KEY REFERENCES canvas_assets(id),owner_id TEXT NOT NULL REFERENCES canvas_users(id),created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS canvas_draft_media(asset_id TEXT PRIMARY KEY REFERENCES canvas_assets(id));
     CREATE TABLE IF NOT EXISTS canvas_media_safety_audit(id TEXT PRIMARY KEY,actor_id TEXT NOT NULL,asset_id TEXT NOT NULL,action TEXT NOT NULL,created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS canvas_auto_hidden(target_type TEXT NOT NULL,target_id TEXT NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(target_type,target_id));
     CREATE TABLE IF NOT EXISTS canvas_safety_meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);
@@ -70,7 +71,8 @@ function autoHideReportedContent(store, targetType, targetId) {
     if (
       !db.prepare('SELECT 1 FROM canvas_assets WHERE id=?').get(targetId) ||
       db.prepare('SELECT 1 FROM canvas_hidden_media WHERE asset_id=?').get(targetId) ||
-      db.prepare('SELECT 1 FROM canvas_pending_media WHERE asset_id=?').get(targetId)
+      db.prepare('SELECT 1 FROM canvas_pending_media WHERE asset_id=?').get(targetId) ||
+      db.prepare('SELECT 1 FROM canvas_draft_media WHERE asset_id=?').get(targetId)
     )
       return false;
     db.prepare('INSERT INTO canvas_hidden_media VALUES(?,?,?)').run(
@@ -207,7 +209,8 @@ function installSafety({ router, get, auth, route, limit, broadcast, invalidate 
       if (
         !get()
           .db.prepare('SELECT 1 FROM ' + tables[targetType] + ' WHERE id=?')
-          .get(targetId)
+          .get(targetId) ||
+        (targetType === 'media' && !get().asset(targetId))
       )
         throw fail('Reported item not found.', 404);
       const existing = get()

@@ -1702,25 +1702,3 @@
     width: min(330px, calc(100vw - 24px));
   }
 }
-.pw-upload-library {
-  display: grid;
-  gap: 10px;
-}
-.pw-upload-library > div {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
-  border: 1px solid #a78bfa44;
-  border-radius: 8px;
-}
-.pw-upload-library img {
-  object-fit: contain;
-  image-rendering: pixelated;
-}
-.pw-upload-library p,
-.pw-upload-library strong {
-  font-size: 12px;
-  line-height: 1.5;
-}

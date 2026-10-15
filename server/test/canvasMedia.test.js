@@ -28,11 +28,13 @@ test('GIF upload keeps resolution, frame timing, and lossless palette colours', 
 test('upload validation rejects invalid input before processing', async () => {
   await assert.rejects(prepareCanvasMedia('not base64!'), { status: 400 });
   const huge = await sharp({
-    create: { width: 2049, height: 1, channels: 4, background: '#ffffff' },
+    create: { width: 4096, height: 1024, channels: 4, background: '#ffffff' },
   })
     .png()
     .toBuffer();
-  await assert.rejects(prepareCanvasMedia(huge.toString('base64')), { status: 400 });
+  const resized = await prepareCanvasMedia(huge.toString('base64'));
+  assert.equal(resized.width, 2048);
+  assert.equal(resized.height, 512);
 });
 test('upload library exposes only the owners media and distinguishes review status', (t) => {
   const store = new CanvasStore(':memory:', { seed: false });
@@ -49,4 +51,54 @@ test('upload library exposes only the owners media and distinguishes review stat
   assert.equal(assets.find((a) => a.id === pending.id).moderationState, 'pending');
   assert.equal(assets.find((a) => a.id === approved.id).moderationState, 'approved');
   assert.ok(assets.every((a) => !('bytes' in a) && !('owner_id' in a)));
+});
+
+test('private PNG and GIF uploads publish only after a successful owner placement', async (t) => {
+  const { randomUUID } = require('node:crypto');
+  const store = new CanvasStore(':memory:', { seed: false });
+  t.after(() => store.close());
+  const alice = store.register({ name: 'Alice', color: '#ffffff' });
+  const bob = store.register({ name: 'Bob', color: '#ffffff' });
+  const mark = (assetId, x = 0) => ({
+    id: randomUUID(),
+    type: 'image',
+    x,
+    y: 0,
+    width: 8,
+    height: 8,
+    content: { color: '#ffffff', size: 1, opacity: 1, assetId },
+  });
+  const occupied = { ...mark(undefined), type: 'rectangle' };
+  store.place(occupied, bob.user);
+  for (const [index, mime] of ['image/png', 'image/gif'].entries()) {
+    const asset = store.addAsset(alice.user, Buffer.from('fixture'), mime, 8, 8, { draft: true });
+    assert.equal(store.asset(asset.id), undefined);
+    assert.equal(store.ownedAsset(asset.id, bob.user), undefined);
+    assert.ok(store.ownedAsset(asset.id, alice.user));
+    assert.throws(() => store.place(mark(asset.id, 40), bob.user), { status: 403 });
+    assert.throws(() => store.place(mark(asset.id), alice.user), { status: 409 });
+    assert.equal(store.asset(asset.id), undefined, 'failed placement must keep the upload private');
+    const result = store.place(mark(asset.id, 80 + index * 16), alice.user);
+    assert.equal(result.element.content.animated, mime === 'image/gif');
+    assert.ok(store.asset(asset.id));
+    assert.equal(
+      store.listAssets(alice.user).find((a) => a.id === asset.id).moderationState,
+      'approved',
+    );
+  }
+  const legacy = store.addAsset(alice.user, Buffer.from('fixture'), 'image/png', 8, 8, {
+    pendingReview: true,
+  });
+  store.place(mark(legacy.id, 160), alice.user);
+  assert.ok(store.asset(legacy.id), 'owner can explicitly publish an earlier pending upload');
+  const hidden = store.addAsset(alice.user, Buffer.from('fixture'), 'image/png', 8, 8, {
+    draft: true,
+  });
+  store.db
+    .prepare('INSERT INTO canvas_hidden_media VALUES(?,?,?)')
+    .run(hidden.id, 'moderator', new Date().toISOString());
+  assert.equal(store.ownedAsset(hidden.id, alice.user), undefined);
+  assert.throws(() => store.place(mark(hidden.id, 240), alice.user), { status: 403 });
+  assert.throws(() => store.setAvatar(alice.user, hidden.id), { status: 400 });
+  assert.equal(store.asset(hidden.id), undefined);
 });

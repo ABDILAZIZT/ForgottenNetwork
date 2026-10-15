@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getLocale, isLocale, LOCALE_STORAGE_KEY, setLocale, translate } from './locale';
+import {
+  getLocale,
+  initializeLocale,
+  isLocale,
+  LOCALE_STORAGE_KEY,
+  setLocale,
+  translate,
+} from './locale';
 
 afterEach(() => {
   setLocale('en');
@@ -22,7 +29,7 @@ describe('interface locale', () => {
     );
   });
 
-  it('persists the choice and applies document language and direction', () => {
+  it('keeps an English interface even with a saved Arabic preference', () => {
     const values = new Map<string, string>();
     const attributes = new Map<string, string>();
     const updatedMeta = new Map<string, string>();
@@ -49,14 +56,16 @@ describe('interface locale', () => {
     vi.stubGlobal('document', documentStub);
     vi.stubGlobal('localStorage', storageStub);
 
+    values.set(LOCALE_STORAGE_KEY, 'ar');
+    initializeLocale();
     setLocale('ar');
 
-    expect(getLocale()).toBe('ar');
-    expect(values.get(LOCALE_STORAGE_KEY)).toBe('ar');
-    expect(attributes.get('lang')).toBe('ar');
-    expect(attributes.get('dir')).toBe('rtl');
-    expect(root.dataset.locale).toBe('ar');
-    expect(documentStub.title).toContain('شبكة النسيان');
-    expect(updatedMeta.get('meta[name="description"]')).toContain('اترك أثرًا');
+    expect(getLocale()).toBe('en');
+    expect(values.get(LOCALE_STORAGE_KEY)).toBe('en');
+    expect(attributes.get('lang')).toBe('en');
+    expect(attributes.get('dir')).toBe('ltr');
+    expect(root.dataset.locale).toBe('en');
+    expect(documentStub.title).toContain('Forgotten Network');
+    expect(updatedMeta.get('meta[name="description"]')).toContain('Leave a mark');
   });
 });

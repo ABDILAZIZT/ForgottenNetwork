@@ -1,5 +1,7 @@
 # Phase 4: safety and accessibility
 
+> **Current behavior (2026-10-15):** The interface is English-only. Main-canvas uploads are private drafts, previewable only by their owner. Publishing artwork or an avatar makes the referenced upload public after ownership and placement checks. Legacy pending uploads follow this same owner publication flow; hidden or rejected media stays blocked. Reports, automatic holds, and moderator removal remain active. Classic remote uploads still require advance review. Earlier descriptions of mandatory review for every permanent-canvas upload or the language switch below are historical.
+
 Updated 14 October 2026.
 
 ## Content controls

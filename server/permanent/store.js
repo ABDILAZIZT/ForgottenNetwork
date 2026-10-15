@@ -308,7 +308,7 @@ class CanvasStore {
         return { element: existing, blocked: [], duplicate: true };
       }
       if (e.content.assetId) {
-        const asset = this.asset(e.content.assetId);
+        const asset = this.ownedAsset(e.content.assetId, user);
         if (!asset || asset.owner_id !== user.id)
           throw fail('This image does not belong to your identity.', 403);
         e.content.animated = asset.mime === 'image/gif';
@@ -331,6 +331,7 @@ class CanvasStore {
           409,
           { blocked: blocked.slice(0, 200), freeSpace: this.findFree(e.x, e.y, e.width, e.height) },
         );
+      if (e.content.assetId) this.publishAsset(e.content.assetId);
       this.db
         .prepare(
           'INSERT INTO canvas_elements(id,owner_id,owner_name,owner_color,owner_avatar,type,x,y,width,height,content,cells,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',
@@ -607,7 +608,7 @@ class CanvasStore {
     leaderboard.sort((a, b) => b.pixels - a.pixels);
     return { ...total, leaderboard, density, spotlight, challenge: this.challenge() };
   }
-  addAsset(user, buffer, mime, width, height, { pendingReview = false } = {}) {
+  addAsset(user, buffer, mime, width, height, { pendingReview = false, draft = false } = {}) {
     const id = randomUUID();
     const createdAt = new Date().toISOString();
     this.transaction(() => {
@@ -618,8 +619,9 @@ class CanvasStore {
         this.db
           .prepare('INSERT INTO canvas_pending_media VALUES(?,?,?)')
           .run(id, user.id, createdAt);
+      if (draft) this.db.prepare('INSERT INTO canvas_draft_media VALUES(?)').run(id);
     });
-    return { id, width, height, mime, url: '/api/canvas/assets/' + id, pendingReview };
+    return { id, width, height, mime, url: '/api/canvas/assets/' + id, pendingReview, draft };
   }
   listAssets(user) {
     return this.db
@@ -627,10 +629,12 @@ class CanvasStore {
         `
       SELECT a.id,a.mime,a.width,a.height,
         CASE WHEN h.asset_id IS NOT NULL THEN 'rejected'
-             WHEN p.asset_id IS NOT NULL THEN 'pending' ELSE 'approved' END AS moderationState
+             WHEN p.asset_id IS NOT NULL THEN 'pending'
+             WHEN d.asset_id IS NOT NULL THEN 'draft' ELSE 'approved' END AS moderationState
       FROM canvas_assets a
       LEFT JOIN canvas_pending_media p ON p.asset_id=a.id
       LEFT JOIN canvas_hidden_media h ON h.asset_id=a.id
+      LEFT JOIN canvas_draft_media d ON d.asset_id=a.id
       WHERE a.owner_id=? ORDER BY a.created_at DESC LIMIT 100
     `,
       )
@@ -639,9 +643,21 @@ class CanvasStore {
   asset(id) {
     return this.db
       .prepare(
-        'SELECT * FROM canvas_assets WHERE id=? AND id NOT IN (SELECT asset_id FROM canvas_hidden_media) AND id NOT IN (SELECT asset_id FROM canvas_pending_media)',
+        'SELECT * FROM canvas_assets WHERE id=? AND id NOT IN (SELECT asset_id FROM canvas_hidden_media) AND id NOT IN (SELECT asset_id FROM canvas_pending_media) AND id NOT IN (SELECT asset_id FROM canvas_draft_media)',
       )
       .get(id);
+  }
+  ownedAsset(id, user) {
+    return this.db
+      .prepare(
+        'SELECT * FROM canvas_assets WHERE id=? AND owner_id=? AND id NOT IN (SELECT asset_id FROM canvas_hidden_media)',
+      )
+      .get(id, user.id);
+  }
+  publishAsset(id) {
+    this.db.prepare('DELETE FROM canvas_draft_media WHERE asset_id=?').run(id);
+    // Owners explicitly publish legacy uploads through the same placement flow.
+    this.db.prepare('DELETE FROM canvas_pending_media WHERE asset_id=?').run(id);
   }
   pendingMedia(id) {
     return this.db
@@ -651,10 +667,13 @@ class CanvasStore {
       .get(id);
   }
   setAvatar(user, id) {
-    const a = this.asset(id);
+    const a = this.ownedAsset(id, user);
     if (!a || a.owner_id !== user.id || a.width > 256 || a.height > 256)
       throw fail('Avatars must be at most 256 x 256 pixels.');
-    this.db.prepare('UPDATE canvas_users SET avatar_id=? WHERE id=?').run(id, user.id);
+    this.transaction(() => {
+      this.publishAsset(id);
+      this.db.prepare('UPDATE canvas_users SET avatar_id=? WHERE id=?').run(id, user.id);
+    });
     return this.user(user.id);
   }
   reactions(id) {

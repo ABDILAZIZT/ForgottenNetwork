@@ -136,13 +136,8 @@ export function isLocale(value: unknown): value is Locale {
 }
 
 function readLocale(): Locale {
-  try {
-    const value =
-      typeof localStorage === 'undefined' ? null : localStorage.getItem(LOCALE_STORAGE_KEY);
-    return isLocale(value) ? value : 'en';
-  } catch {
-    return 'en';
-  }
+  // This release uses English, including devices with an older Arabic preference.
+  return 'en';
 }
 
 let currentLocale = readLocale();
@@ -189,20 +184,20 @@ function applyDocumentLocale(locale: Locale) {
 }
 
 export function initializeLocale() {
-  currentLocale = readLocale();
-  applyDocumentLocale(currentLocale);
+  setLocale('en');
   if (typeof window !== 'undefined' && !storageListenerInstalled) {
     storageListenerInstalled = true;
     window.addEventListener('storage', (event) => {
       if (event.key !== LOCALE_STORAGE_KEY) return;
-      currentLocale = isLocale(event.newValue) ? event.newValue : 'en';
+      currentLocale = 'en';
       applyDocumentLocale(currentLocale);
       notify();
     });
   }
 }
 
-export function setLocale(locale: Locale) {
+export function setLocale(_locale: Locale) {
+  const locale: Locale = 'en';
   currentLocale = locale;
   try {
     localStorage.setItem(LOCALE_STORAGE_KEY, locale);

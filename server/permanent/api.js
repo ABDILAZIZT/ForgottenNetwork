@@ -258,7 +258,7 @@ function createPermanentCanvas({ filename, origins = [], pool } = {}) {
       const media = await prepareCanvasMedia(req.body.data);
       res.status(201).json(
         get().addAsset(user, media.bytes, media.mime, media.width, media.height, {
-          pendingReview: true,
+          draft: true,
         }),
       );
     }),
@@ -268,6 +268,14 @@ function createPermanentCanvas({ filename, origins = [], pool } = {}) {
     route((req, res) => {
       const user = auth(req);
       res.set('Cache-Control', 'no-store').json({ assets: get().listAssets(user) });
+    }),
+  );
+  router.get(
+    '/assets/:id/preview',
+    route((req, res) => {
+      const asset = get().ownedAsset(req.params.id, auth(req));
+      if (!asset) throw fail('Image not found.', 404);
+      res.set('Cache-Control', 'private, no-store').type(asset.mime).send(Buffer.from(asset.bytes));
     }),
   );
   router.get(

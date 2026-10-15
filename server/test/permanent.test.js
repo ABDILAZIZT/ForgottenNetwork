@@ -321,7 +321,32 @@ test('HTTP and WebSocket integration: concurrent claims, presence, live art, cha
   const png = await sharp({ create: { width: 16, height: 16, channels: 4, background: '#22d3ee' } })
     .png()
     .toBuffer();
-  const uploaded = await request('/assets', alice.token, { data: png.toString('base64') });
+  const draftUpload = await request('/assets', alice.token, { data: png.toString('base64') });
+  assert.equal(draftUpload.status, 201);
+  assert.equal(draftUpload.body.draft, true);
+  assert.equal((await fetch(base + draftUpload.body.url)).status, 404);
+  const previewUrl = base + draftUpload.body.url + '/preview';
+  assert.equal((await fetch(previewUrl)).status, 401);
+  assert.equal(
+    (await fetch(previewUrl, { headers: { authorization: 'Bearer ' + bob.token } })).status,
+    404,
+  );
+  const ownerPreview = await fetch(previewUrl, {
+    headers: { authorization: 'Bearer ' + alice.token },
+  });
+  assert.equal(ownerPreview.status, 200);
+  assert.equal(ownerPreview.headers.get('cache-control'), 'private, no-store');
+  assert.deepEqual(Buffer.from(await ownerPreview.arrayBuffer()), png);
+  assert.equal(
+    (await request('/avatar', alice.token, { assetId: draftUpload.body.id })).status,
+    200,
+  );
+  assert.equal((await fetch(base + draftUpload.body.url)).status, 200);
+  // Keep the legacy moderator queue covered independently of new private uploads.
+  const uploaded = {
+    status: 201,
+    body: canvas.getStore().addAsset(alice.user, png, 'image/png', 16, 16, { pendingReview: true }),
+  };
   assert.equal(uploaded.status, 201);
   assert.equal(uploaded.body.mime, 'image/png');
   assert.equal(uploaded.body.pendingReview, true);
@@ -329,7 +354,6 @@ test('HTTP and WebSocket integration: concurrent claims, presence, live art, cha
   assert.deepEqual((await request('/assets', bob.token)).body.assets, []);
   assert.equal((await request('/assets', alice.token)).body.assets[0].moderationState, 'pending');
   assert.equal((await fetch(base + uploaded.body.url)).status, 404);
-  assert.equal((await request('/avatar', alice.token, { assetId: uploaded.body.id })).status, 400);
   const queue = await request('/moderation/queue', alice.token);
   assert.equal(queue.body.pendingMedia[0].id, uploaded.body.id);
   const mediaPreview = await fetch(base + '/api/canvas/moderation/media/' + uploaded.body.id, {
@@ -353,7 +377,9 @@ test('HTTP and WebSocket integration: concurrent claims, presence, live art, cha
   );
   assert.equal((await request('/avatar', alice.token, { assetId: uploaded.body.id })).status, 200);
   assert.equal((await request('/avatar', bob.token, { assetId: uploaded.body.id })).status, 400);
-  const rejectedUpload = await request('/assets', alice.token, { data: png.toString('base64') });
+  const rejectedUpload = {
+    body: canvas.getStore().addAsset(alice.user, png, 'image/png', 16, 16, { pendingReview: true }),
+  };
   assert.equal(rejectedUpload.body.pendingReview, true);
   assert.equal(
     (

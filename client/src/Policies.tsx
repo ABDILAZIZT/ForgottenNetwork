@@ -5,7 +5,7 @@ import LocaleControl from './LocaleControl';
 import { translate, useLocale } from './locale';
 import './policies.css';
 
-export const RULES_VERSION = '2026-10-06';
+export const RULES_VERSION = '2026-10-15';
 export const RULES_SUMMARY =
   'Keep this community welcoming: no sexual content, sexualized nudity, exploitation, harassment, hate, threats, graphic violence, slurs, profanity, malicious content or private identifying information. Share only artwork you have permission to use.';
 const pages: Record<string, { title: string; paragraphs: string[] }> = {
@@ -14,7 +14,7 @@ const pages: Record<string, { title: string; paragraphs: string[] }> = {
     paragraphs: [
       RULES_SUMMARY,
       'These rules apply to drawings, uploaded images and GIFs, avatars, stickers, names, descriptions, artwork text and chat. Pornography, sexual solicitation, sexual harassment and any sexual content involving minors are prohibited. Do not target people with abuse, share private identifying information, make credible threats or encourage violence.',
-      'Server text filters block some English and Arabic prohibited words and common evasions. They can miss content or make mistakes. New image and GIF uploads are held back from public use until a moderator reviews them; approved uploads can still contain content the reviewer misses. Existing artwork, images and canvas strokes are not automatically scanned for sexual or violent content. File validation checks format and size, not meaning. Reports need human review; response times are not guaranteed. Do not assume all visible content is suitable for children.',
+      'Server text filters block some English and Arabic prohibited words and common evasions. They can miss content or make mistakes. On the main canvas, uploaded images and GIFs stay private until their owner publishes artwork or an avatar using them. They do not require advance moderator approval. Classic remote uploads still require moderator approval. Existing artwork, images and canvas strokes are not automatically scanned for sexual or violent content. File validation checks format and size, not meaning. Reports need human review; response times are not guaranteed. Do not assume all visible content is suitable for children.',
       'Use Safety & privacy to report an artwork, media file, chat message or profile by its ID. Reports are stored for review. Three distinct open reports temporarily hide eligible artwork, approved media and chat while a moderator reviews them; dismissing a report can release that hold when fewer than three remain. Moderators can hide artwork, media and chat and dismiss reports, with an audit record. Profile and complex cases require operator review. You can view the status of your own reports.',
     ],
   },
@@ -22,7 +22,7 @@ const pages: Record<string, { title: string; paragraphs: string[] }> = {
     title: 'Privacy Policy',
     paragraphs: [
       'The permanent canvas stores a random artist ID, chosen public name and color, optional uploaded avatar, hashed recovery secret, creation/last visit timestamps, and activity counters used for streaks and rewards. Your recovery secret is stored on your device; anyone with it can act as you. Do not put your real name, contact details or other private information in public content.',
-      'Published artwork, creator attribution, approved uploads, reactions and chat are public. New media uploads remain private from ordinary visitors until a moderator approves them. Reviewers configured by the operator can inspect pending uploads. Live presence shares your artist name, color, viewport/cursor and drawing status with connected visitors. Server infrastructure receives IP addresses and request information for delivery, security and rate limits. We do not intentionally request birth dates, addresses, telephone numbers or marketing email.',
+      'Published artwork, creator attribution, published uploads, reactions and chat are public. Main-canvas uploads are private drafts until the owner publishes artwork or an avatar using them. A failed placement does not publish its upload. Classic remote uploads remain private until moderator approval. Configured reviewers can inspect legacy pending uploads. Live presence shares your artist name, color, viewport/cursor and drawing status with connected visitors. Server infrastructure receives IP addresses and request information for delivery, security and rate limits. We do not intentionally request birth dates, addresses, telephone numbers or marketing email.',
       'Drafts, pending publications, identity credentials, preferences, demo balances and local Classic content use browser storage. Draft mode does not publish saved drafts automatically. Queued publications are different from drafts and retry after connectivity returns. Clearing browser data can lose access and unpublished work; save your recovery secret securely.',
       'Classic remote sessions use an essential session cookie and may use a configured OpenID Connect provider. The configured hosting, database and object storage providers process data needed to run the service. No third-party AI image moderation transmission is implemented. Advertising remains disabled unless the operator configures a publisher account and ad units. If enabled, Google ad technology may process device and ad-request data; optional ad scripts load only after an affirmative device choice and a successful consent check.',
       'Removing permanent artwork hides it from active views and releases its unused cells. Original artwork and attribution remain in server history; owner removals can be restored for 30 days if space is available. History, media, reports and security audit records currently have no automatic purge schedule. Backups may retain earlier records. Removal is not immediate erasure of all copies.',
@@ -150,8 +150,9 @@ function SafetyCenter() {
     <>
       <p>
         Reports need human review. Three distinct open reports can temporarily hide eligible content
-        until review; this is not an automatic image safety scan. New media uploads remain private
-        until a moderator approves them. Do not include private information in reports.
+        until review; this is not an automatic image safety scan. Main-canvas uploads stay private
+        until you publish artwork or an avatar using them. Do not include private information in
+        reports.
       </p>
       <p role="status">{notice}</p>
       <form
@@ -218,7 +219,11 @@ function SafetyCenter() {
           {r.automatic_hidden ? ' — automatically hidden for review' : ''} (reference {r.id})
         </p>
       ))}
-      <h2>My media awaiting review</h2>
+      <h2>Uploads from the previous review queue</h2>
+      <p>
+        Open Image / GIF on the canvas to choose and publish an earlier upload. Removed media
+        remains unavailable.
+      </p>
       {state?.pendingUploads.length ? (
         <ul>
           {state.pendingUploads.map((upload) => (

@@ -124,7 +124,8 @@ export interface Asset {
   url: string;
   mime?: string;
   pendingReview?: boolean;
-  moderationState?: 'pending' | 'approved' | 'rejected';
+  draft?: boolean;
+  moderationState?: 'draft' | 'pending' | 'approved' | 'rejected';
 }
 export interface Blocked {
   cx: number;

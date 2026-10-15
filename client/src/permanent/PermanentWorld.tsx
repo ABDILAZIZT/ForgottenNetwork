@@ -46,7 +46,15 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { PermanentEngine, type Settings } from './CanvasEngine';
 import { api, ApiError, fileData, readSaved } from './api';
-import { clearArtCache, sticker as drawSticker, loadArt, drawArt } from './art';
+import {
+  clearArtCache,
+  sticker as drawSticker,
+  loadArt,
+  drawArt,
+  mediaSource,
+  setArtSession,
+  resetArtMedia,
+} from './art';
 import RasterStudio from './RasterStudio';
 import StudioUtilities from './StudioUtilities';
 import { placementCells } from './geometry';
@@ -67,6 +75,7 @@ import type {
 import { useModal } from '../components/useModal';
 import './world.css';
 import './studio.css';
+import './media.css';
 import Expedition from '../components/Expedition';
 import { recordExploration } from '../exploration';
 import { readDraftMode, saveDraftMode, draftPreferenceKey } from './draftPreference';
@@ -169,6 +178,12 @@ export default function PermanentWorld() {
   });
   const [welcome, setWelcome] = useState(!session),
     [exploring, setExploring] = useState(false);
+  useEffect(() => {
+    setArtSession(session?.token);
+  }, [session?.token]);
+  const mediaBusy = useRef(false);
+  const [mediaError, setMediaError] = useState('');
+  const [mediaPhase, setMediaPhase] = useState('');
   const [settings, setSettings] = useState<Settings>({
     ...initialSettings,
     draftMode: readDraftMode(session?.user.id),
@@ -628,7 +643,8 @@ export default function PermanentWorld() {
       ws.onmessage = (event) => {
         const { type, data } = JSON.parse(event.data);
         if (type === 'safety:refresh') {
-          clearArtCache();
+          resetArtMedia();
+          setUploadRevision((n) => n + 1);
           void api<ChatMessage[]>('/chat')
             .then(setChat)
             .catch(() => undefined);
@@ -756,6 +772,7 @@ export default function PermanentWorld() {
       if (e.key === 'Escape') {
         setPanel(null);
         setSelected(null);
+        setSettings((s) => ({ ...s, tool: 'pan', assetId: undefined }));
         return;
       }
       if (e.key === '+' || e.key === '=') engine.current?.zoom(1.2);
@@ -849,7 +866,24 @@ export default function PermanentWorld() {
     setUploadRevision((value) => value + 1);
     return asset;
   };
-  const chooseMedia = (asset: Asset) => {
+  const prepareMedia = async (asset: Asset) => {
+    setMediaPhase('Preparing preview…');
+    await mediaSource(asset.id, true);
+    await loadArt({
+      id: asset.id,
+      type: 'image',
+      x: 0,
+      y: 0,
+      width: asset.width,
+      height: asset.height,
+      content: {
+        color: '#ffffff',
+        size: 1,
+        opacity: 1,
+        assetId: asset.id,
+        animated: asset.mime === 'image/gif',
+      },
+    });
     setSettings((s) => ({
       ...s,
       tool: 'image',
@@ -857,50 +891,53 @@ export default function PermanentWorld() {
       animated: asset.mime === 'image/gif',
       opacity: 1,
       rotation: 0,
-      mediaWidth: Math.min(512, asset.width, (512 * asset.width) / asset.height),
+      mediaWidth: Math.max(
+        1,
+        Math.round(Math.min(512, asset.width, (512 * asset.width) / asset.height)),
+      ),
       mediaRatio: asset.height / asset.width,
     }));
     setOptions(true);
-    toastMessage(
-      locale === 'ar'
-        ? 'الصورة جاهزة. اختر مكانًا فارغًا على اللوحة.'
-        : 'Image ready. Choose a free spot on the canvas.',
-    );
+    toastMessage('Image ready. Click a free spot on the canvas.');
+  };
+  const chooseMedia = async (asset: Asset) => {
+    if (mediaBusy.current) return;
+    mediaBusy.current = true;
+    setUploading(true);
+    setMediaError('');
+    try {
+      await prepareMedia(asset);
+    } catch (error) {
+      setMediaError((error as Error).message);
+    } finally {
+      mediaBusy.current = false;
+      setUploading(false);
+    }
   };
   const uploadMedia = async (file?: File) => {
-    if (!file) return;
+    if (!file || mediaBusy.current) return;
     if (!session) {
       setWelcome(true);
       return;
     }
-    if (file.type !== 'image/gif' && !/\.gif$/i.test(file.name)) {
-      setEditor({ source: URL.createObjectURL(file) });
-      return;
-    }
+    mediaBusy.current = true;
+    setSettings((s) => ({ ...s, tool: 'image', assetId: undefined }));
+    setOptions(true);
+    setMediaError('');
+    setMediaPhase('Uploading image…');
     setBusy(true);
     setUploading(true);
     try {
       const asset = await upload(file);
-      if (asset.pendingReview) {
-        setSettings((s) => ({ ...s, tool: 'image', assetId: undefined }));
-        setOptions(true);
-        toastMessage(
-          locale === 'ar'
-            ? 'تم رفع GIF بنجاح. حالته ظاهرة في قائمة الصور؛ ينتظر موافقة المشرف.'
-            : 'GIF uploaded. Its review status is shown in your image library.',
-        );
-        return;
-      }
-      chooseMedia(asset);
+      await prepareMedia(asset);
     } catch (error) {
-      toastMessage(
+      setMediaError(
         (error as Error).name === 'TimeoutError'
-          ? locale === 'ar'
-            ? 'انتهت مهلة الرفع. تحقق من الاتصال وحدّث قائمة الصور قبل إعادة المحاولة.'
-            : 'Upload timed out. Check your connection and refresh the image library before retrying.'
+          ? 'Upload timed out. Refresh your uploads before trying again.'
           : (error as Error).message,
       );
     } finally {
+      mediaBusy.current = false;
       setBusy(false);
       setUploading(false);
     }
@@ -918,13 +955,9 @@ export default function PermanentWorld() {
       if (avatar) {
         try {
           const image = await upload(avatar, true, result.token);
-          if (image.pendingReview)
-            toastMessage('Identity saved. Your avatar is held for review; check Safety & privacy.');
-          else {
-            result.user = await api<Identity>('/avatar', result.token, { assetId: image.id });
-            localStorage.setItem('fn_canvas_identity', JSON.stringify(result));
-            setSession({ ...result });
-          }
+          result.user = await api<Identity>('/avatar', result.token, { assetId: image.id });
+          localStorage.setItem('fn_canvas_identity', JSON.stringify(result));
+          setSession({ ...result });
         } catch (error) {
           toastMessage('Identity saved. ' + (error as Error).message);
         }
@@ -977,11 +1010,20 @@ export default function PermanentWorld() {
           new URLSearchParams({
             x: String(cam?.x || 0),
             y: String(cam?.y || 0),
-            width: '256',
-            height: '192',
+            width: String(settings.tool === 'image' ? Math.ceil(settings.mediaWidth) : 256),
+            height: String(
+              settings.tool === 'image'
+                ? Math.ceil(settings.mediaWidth * settings.mediaRatio)
+                : 192,
+            ),
           }),
       );
-      engine.current?.fly(space.x + 128, space.y + 96, 1.5);
+      engine.current?.fly(
+        space.x + (settings.tool === 'image' ? settings.mediaWidth / 2 : 128),
+        space.y +
+          (settings.tool === 'image' ? (settings.mediaWidth * settings.mediaRatio) / 2 : 96),
+        1.5,
+      );
       toastMessage('A fresh patch of the world, ready for your mark.');
     } catch (error) {
       toastMessage((error as Error).message);
@@ -1092,15 +1134,6 @@ export default function PermanentWorld() {
         id: crypto.randomUUID(),
       };
     const { asset, id } = editorUpload.current;
-    if (asset.pendingReview) {
-      setSettings((s) => ({ ...s, tool: 'image', assetId: undefined }));
-      setOptions(true);
-      setEditor(null);
-      toastMessage(
-        'Upload held for moderator review. Check Safety & privacy; it cannot be published until approved.',
-      );
-      return;
-    }
     if (editor.avatar) {
       const user = await api<Identity>('/avatar', session.token, { assetId: asset.id });
       const next = { ...session, user };
@@ -1353,7 +1386,11 @@ export default function PermanentWorld() {
       </nav>
       {!welcome && options && (
         <section
-          className={'pw-tool-options ' + (expanded ? 'offset' : '')}
+          className={
+            'pw-tool-options ' +
+            (expanded ? 'offset ' : '') +
+            (settings.tool === 'image' ? 'pw-media-options' : '')
+          }
           aria-label="Tool settings panel"
         >
           <div className="pw-section-title">
@@ -1367,7 +1404,51 @@ export default function PermanentWorld() {
               <X size={14} />
             </button>
           </div>
-          {settings.tool === 'eraser' ? (
+          {settings.tool === 'image' && session ? (
+            <>
+              <UploadLibrary
+                key={session.user.id}
+                token={session.token}
+                revision={uploadRevision}
+                selectedId={settings.assetId}
+                onChoose={chooseMedia}
+                onUpload={() => fileInput.current?.click()}
+                busy={busy || uploading}
+                error={mediaError}
+                phase={mediaPhase}
+              />
+              {settings.assetId && (
+                <div className="pw-media-placement">
+                  <label>
+                    Size{' '}
+                    <b>
+                      {Math.round(settings.mediaWidth)} ×{' '}
+                      {Math.round(settings.mediaWidth * settings.mediaRatio)} px
+                    </b>
+                    <input
+                      aria-label="Image size"
+                      type="range"
+                      min={1}
+                      max={Math.max(1, Math.floor(Math.min(512, 512 / settings.mediaRatio)))}
+                      value={settings.mediaWidth}
+                      onChange={(e) =>
+                        setSettings((s) => ({ ...s, mediaWidth: Number(e.target.value) }))
+                      }
+                    />
+                  </label>
+                  <p>
+                    {settings.draftMode
+                      ? 'Click a free spot, then publish your draft.'
+                      : 'Click a free spot to publish immediately.'}
+                  </p>
+                  <button onClick={() => void findFree()}>
+                    <MapPin size={14} /> Find space for this image
+                  </button>
+                  <small>Esc cancels placement.</small>
+                </div>
+              )}
+            </>
+          ) : settings.tool === 'eraser' ? (
             <p className="pw-muted">
               Erase drafts by dragging. Click your published artwork to remove the whole artwork
               after confirmation. Other artists are protected.
@@ -1507,17 +1588,6 @@ export default function PermanentWorld() {
                   )}
                 </>
               )}
-              {settings.tool === 'image' && session && (
-                <UploadLibrary
-                  key={session.user.id}
-                  token={session.token}
-                  revision={uploadRevision}
-                  arabic={locale === 'ar'}
-                  onChoose={chooseMedia}
-                  onUpload={() => fileInput.current?.click()}
-                  busy={busy}
-                />
-              )}
               {settings.tool === 'sticker' && (
                 <>
                   <div className="pw-sticker-picker">
@@ -1611,12 +1681,16 @@ export default function PermanentWorld() {
               <button title="Undo draft" onClick={() => engine.current?.undoDraft()}>
                 <Undo2 size={16} />
               </button>
-              <span>{drafts} drafts · Publish in the header</span>
+              <button className="pw-publish-drafts" onClick={() => engine.current?.publishDrafts()}>
+                <ArrowUpRight size={16} /> Publish {drafts} {drafts === 1 ? 'draft' : 'drafts'}
+              </button>
             </div>
           )}
-          <div className="pw-permanent-note">
-            <Lock size={12} /> Manage your own work. Moderators can hide reported content.
-          </div>
+          {settings.tool !== 'image' && (
+            <div className="pw-permanent-note">
+              <Lock size={12} /> Manage your own work. Moderators can hide reported content.
+            </div>
+          )}
         </section>
       )}
       <div className="pw-bottom">

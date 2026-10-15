@@ -1,5 +1,7 @@
 # Trust, privacy and accessibility audit — 2026-10-06
 
+> **Current behavior (2026-10-15):** The interface is English-only. Main-canvas uploads are private drafts, previewable only by their owner. Publishing artwork or an avatar makes the referenced upload public after ownership and placement checks. Legacy pending uploads follow this same owner publication flow; hidden or rejected media stays blocked. Reports, automatic holds, and moderator removal remain active. Classic remote uploads still require advance review. Earlier descriptions of mandatory review for every permanent-canvas upload or the language switch below are historical.
+
 This is an implementation inventory, not a legal compliance certificate. Policies are rendered at `/community`, `/privacy`, `/terms`, `/cookies`, `/refunds`, and `/safety`. They must be reviewed against actual deployment settings before claiming compliance or inviting children to create identities.
 
 ## Moderation that exists
