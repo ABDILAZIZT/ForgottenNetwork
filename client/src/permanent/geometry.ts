@@ -1,4 +1,17 @@
-import type { Placement, Point } from './types';
+import type { Artwork, Placement, Point } from './types';
+
+export function availablePlacementCells(
+  e: Placement,
+  occupied: ReadonlyMap<string, Artwork>,
+  artistId?: string,
+  cells = placementCells(e),
+): Point[] {
+  const free = cells.filter(([x, y]) => {
+    const owner = occupied.get(x + ',' + y);
+    return !owner || owner.ownerId === artistId;
+  });
+  return free.length !== cells.length && !['brush', 'pixel'].includes(e.type) ? [] : free;
+}
 
 // Preview the same 8px ownership cells used by the authoritative server check.
 export function placementCells(e: Placement): Point[] {

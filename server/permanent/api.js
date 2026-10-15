@@ -1,5 +1,5 @@
 const express = require('express');
-const sharp = require('sharp');
+const { prepareCanvasMedia } = require('./media');
 const { WebSocketServer, WebSocket } = require('ws');
 const { CanvasStore, normalizeElement, fail } = require('./store');
 const path = require('node:path');
@@ -255,44 +255,19 @@ function createPermanentCanvas({ filename, origins = [], pool } = {}) {
     route(async (req, res) => {
       const user = auth(req);
       limit('upload:' + user.id, 12, 60000);
-      if (typeof req.body.data !== 'string' || req.body.data.length > 11200000)
-        throw fail('Choose an image under 8MB.');
-      const bytes = Buffer.from(req.body.data, 'base64');
-      let meta, processed, mime;
-      try {
-        const input = sharp(bytes, { animated: true, limitInputPixels: 16777216, failOn: 'error' });
-        meta = await input.metadata();
-        const frames = meta.pages || 1,
-          height = meta.pageHeight || meta.height;
-        if (
-          !['png', 'jpeg', 'webp', 'gif'].includes(meta.format) ||
-          !meta.width ||
-          !height ||
-          meta.width > 2048 ||
-          height > 2048 ||
-          frames > 120 ||
-          meta.width * height * frames > 16777216
-        )
-          throw new Error('limits');
-        if (meta.format === 'gif') {
-          processed = await input.gif().toBuffer();
-          mime = 'image/gif';
-        } else {
-          processed = await input.png().toBuffer();
-          mime = 'image/png';
-        }
-        meta.height = height;
-      } catch {
-        throw fail(
-          'Use a valid PNG, JPG, WebP, or GIF: up to 2048px, 120 frames, and 16 million decoded pixels.',
-        );
-      }
-      if (processed.length > 8 * 1024 * 1024) throw fail('Processed image exceeds 8MB.');
-      res
-        .status(201)
-        .json(
-          get().addAsset(user, processed, mime, meta.width, meta.height, { pendingReview: true }),
-        );
+      const media = await prepareCanvasMedia(req.body.data);
+      res.status(201).json(
+        get().addAsset(user, media.bytes, media.mime, media.width, media.height, {
+          pendingReview: true,
+        }),
+      );
+    }),
+  );
+  router.get(
+    '/assets',
+    route((req, res) => {
+      const user = auth(req);
+      res.set('Cache-Control', 'no-store').json({ assets: get().listAssets(user) });
     }),
   );
   router.get(

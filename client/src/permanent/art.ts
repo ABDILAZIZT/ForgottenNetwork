@@ -1,41 +1,46 @@
 import type { Artwork, Placement } from './types';
 import { GifDecoder, type GifFrame } from '../engine/GifDecoder';
+import { drawBrush } from './brushes';
 
 const images = new Map<string, HTMLImageElement>();
 const frames = new Map<string, GifFrame[]>();
 const loading = new Map<string, Promise<void>>();
 const tiles = new Map<string, HTMLCanvasElement>();
+const failedUntil = new Map<string, number>();
 
 export async function loadArt(e: Placement) {
   const id = e.content.assetId;
   if (!id) return;
   if (loading.has(id)) return loading.get(id);
-  if (images.has(id)) return;
-  const promise = new Promise<void>((resolve, reject) => {
-    const img = new Image();
-    const timeout = setTimeout(() => {
-      img.src = '';
-      reject(new Error('Image loading timed out. Try export again.'));
-    }, 15000);
-    img.onload = () => {
-      clearTimeout(timeout);
-      images.set(id, img);
-      resolve();
-    };
-    img.onerror = () => {
-      clearTimeout(timeout);
-      reject(new Error('Image unavailable'));
-    };
-    img.src = '/api/canvas/assets/' + id;
-  }).then(async () => {
-    if (e.content.animated) frames.set(id, await GifDecoder.decode('/api/canvas/assets/' + id));
-  });
+  if (images.has(id) || frames.has(id)) return;
+  const promise = e.content.animated
+    ? GifDecoder.decode('/api/canvas/assets/' + id).then((decoded) => {
+        frames.set(id, decoded);
+      })
+    : new Promise<void>((resolve, reject) => {
+        const img = new Image();
+        const timeout = setTimeout(() => {
+          img.src = '';
+          reject(new Error('Image loading timed out. Try export again.'));
+        }, 15000);
+        img.onload = () => {
+          clearTimeout(timeout);
+          images.set(id, img);
+          resolve();
+        };
+        img.onerror = () => {
+          clearTimeout(timeout);
+          reject(new Error('Image unavailable'));
+        };
+        img.src = '/api/canvas/assets/' + id;
+      });
   loading.set(id, promise);
   try {
     await promise;
   } catch (error) {
     loading.delete(id);
     images.delete(id);
+    failedUntil.set(id, Date.now() + 5000);
     throw error;
   }
 }
@@ -174,13 +179,9 @@ function raw(ctx: CanvasRenderingContext2D, e: Placement, t: number) {
           c.size,
         );
     });
-  } else if (['brush', 'line', 'arrow'].includes(e.type)) {
-    if (c.brush === 'pencil') ctx.globalAlpha *= 0.55;
-    if (c.brush === 'marker') {
-      ctx.globalAlpha *= 0.7;
-      ctx.lineCap = 'square';
-    }
-    if (c.brush === 'airbrush') ctx.filter = `blur(${Math.max(0.5, c.size / 8)}px)`;
+  } else if (e.type === 'brush') {
+    drawBrush(ctx, c, e.x, e.y);
+  } else if (['line', 'arrow'].includes(e.type)) {
     const pts = c.points || [];
     ctx.beginPath();
     pts.forEach(([x, y], i) => {
@@ -273,12 +274,14 @@ function raw(ctx: CanvasRenderingContext2D, e: Placement, t: number) {
         if (time < f.delay) break;
         time -= f.delay;
       }
+      ctx.imageSmoothingEnabled = e.width < frame.canvas.width || e.height < frame.canvas.height;
+      ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(frame.canvas, 0, 0, e.width, e.height);
     } else if (img) ctx.drawImage(img, 0, 0, e.width, e.height);
     else {
       ctx.fillStyle = '#243041';
       ctx.fillRect(0, 0, e.width, e.height);
-      void loadArt(e).catch(() => undefined);
+      if ((failedUntil.get(c.assetId) || 0) < Date.now()) void loadArt(e).catch(() => undefined);
     }
   }
   ctx.restore();

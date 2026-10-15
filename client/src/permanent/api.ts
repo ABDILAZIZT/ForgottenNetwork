@@ -11,9 +11,10 @@ export async function api<T>(
   path: string,
   token: string | null = null,
   body?: unknown,
+  timeoutMs = 20000,
 ): Promise<T> {
   const response = await fetch('/api/canvas' + path, {
-    signal: AbortSignal.timeout(20000),
+    signal: AbortSignal.timeout(timeoutMs),
     method: body === undefined ? 'GET' : 'POST',
     headers: {
       ...(token ? { Authorization: 'Bearer ' + token } : {}),

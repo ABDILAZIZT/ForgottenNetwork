@@ -621,6 +621,21 @@ class CanvasStore {
     });
     return { id, width, height, mime, url: '/api/canvas/assets/' + id, pendingReview };
   }
+  listAssets(user) {
+    return this.db
+      .prepare(
+        `
+      SELECT a.id,a.mime,a.width,a.height,
+        CASE WHEN h.asset_id IS NOT NULL THEN 'rejected'
+             WHEN p.asset_id IS NOT NULL THEN 'pending' ELSE 'approved' END AS moderationState
+      FROM canvas_assets a
+      LEFT JOIN canvas_pending_media p ON p.asset_id=a.id
+      LEFT JOIN canvas_hidden_media h ON h.asset_id=a.id
+      WHERE a.owner_id=? ORDER BY a.created_at DESC LIMIT 100
+    `,
+      )
+      .all(user.id);
+  }
   asset(id) {
     return this.db
       .prepare(

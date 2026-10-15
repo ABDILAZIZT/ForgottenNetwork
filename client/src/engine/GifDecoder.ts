@@ -1,4 +1,4 @@
-import { parseGIF, decompressFrames } from 'gifuct-js';
+import { parseGIF, decompressFrame, type ParsedFrame } from 'gifuct-js';
 
 export interface GifFrame {
   canvas: HTMLCanvasElement;
@@ -7,76 +7,75 @@ export interface GifFrame {
 
 export class GifDecoder {
   static async decode(url: string): Promise<GifFrame[]> {
-    try {
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error(`Failed to fetch GIF: ${resp.statusText}`);
-
-      const buff = await resp.arrayBuffer();
-      if (buff.byteLength < 10) throw new Error('Invalid GIF buffer');
-
-      const gif = parseGIF(buff);
-      if (!gif.frames || gif.frames.length === 0) return [];
-
-      const width = gif.lsd.width;
-      const height = gif.lsd.height;
-      if (width === 0 || height === 0) return [];
-
-      // We'll use decompressFrames but we'll try to be smart.
-      // Since decompressFrames is sync and heavy, we'll at least
-      // ensure we've yielded before it starts and after it ends.
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // If the GIF is massive, warn the user via console at least
-      if (gif.frames.length > 100) {
-        console.warn('Large GIF detected, processing may cause temporary stutter');
+    const response = await fetch(url, { signal: AbortSignal.timeout(20000) });
+    if (!response.ok) throw new Error(`Failed to fetch GIF: ${response.status}`);
+    const buffer = await response.arrayBuffer();
+    if (buffer.byteLength < 10 || buffer.byteLength > 8 * 1024 * 1024)
+      throw new Error('GIF must be under 8 MB.');
+    const gif = parseGIF(buffer);
+    const width = gif.lsd.width,
+      height = gif.lsd.height;
+    const encoded = gif.frames.filter((frame) => 'image' in frame);
+    if (
+      !width ||
+      !height ||
+      width > 2048 ||
+      height > 2048 ||
+      !encoded.length ||
+      encoded.length > 120 ||
+      width * height * encoded.length > 16777216
+    )
+      throw new Error('GIF exceeds the supported dimensions or frame count.');
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d')!;
+    const patch = document.createElement('canvas');
+    const saved = document.createElement('canvas');
+    saved.width = width;
+    saved.height = height;
+    const savedCtx = saved.getContext('2d')!;
+    const result: GifFrame[] = [];
+    let previous: ParsedFrame | undefined;
+    for (const source of encoded) {
+      // Dispose the PREVIOUS frame only after it has been displayed.
+      if (previous?.disposalType === 2) {
+        const d = previous.dims;
+        ctx.clearRect(d.left, d.top, d.width, d.height);
+        const background = gif.gct?.[gif.lsd.backgroundColorIndex];
+        if (previous.transparentIndex === undefined && background) {
+          ctx.fillStyle = `rgb(${background.join(',')})`;
+          ctx.fillRect(d.left, d.top, d.width, d.height);
+        }
+      } else if (previous?.disposalType === 3) {
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(saved, 0, 0);
       }
-
-      // We still use decompressFrames as it's the most reliable way with this lib,
-      // but we wrap the subsequent canvas drawing in a yielding loop.
-      const allFramesData = decompressFrames(gif, true);
-
-      const gifFrames: GifFrame[] = [];
-      const tempCanvas = document.createElement('canvas');
-      const tempCtx = tempCanvas.getContext('2d')!;
-      tempCanvas.width = width;
-      tempCanvas.height = height;
-
-      for (let i = 0; i < allFramesData.length; i++) {
-        const frame = allFramesData[i];
-
-        if (frame.disposalType === 2) {
-          tempCtx.clearRect(0, 0, width, height);
-        }
-
-        const frameCanvas = document.createElement('canvas');
-        frameCanvas.width = width;
-        frameCanvas.height = height;
-        const frameCtx = frameCanvas.getContext('2d')!;
-
-        try {
-          const patchData = new Uint8ClampedArray(frame.patch);
-          const imageData = new ImageData(patchData, frame.dims.width, frame.dims.height);
-          tempCtx.putImageData(imageData, frame.dims.left, frame.dims.top);
-          frameCtx.drawImage(tempCanvas, 0, 0);
-
-          gifFrames.push({
-            canvas: frameCanvas,
-            delay: frame.delay || 100,
-          });
-        } catch (err) {
-          console.warn('Frame processing failed:', i, err);
-        }
-
-        // Yield to UI every 2 frames to keep it somewhat alive
-        if (i % 2 === 0) {
-          await new Promise((resolve) => setTimeout(resolve, 0));
-        }
+      const frame = decompressFrame(source, gif.gct, true);
+      if (frame.disposalType === 3) {
+        savedCtx.clearRect(0, 0, width, height);
+        savedCtx.drawImage(canvas, 0, 0);
       }
-
-      return gifFrames;
-    } catch (e) {
-      console.error('GifDecoder Error:', e);
-      return [];
+      patch.width = frame.dims.width;
+      patch.height = frame.dims.height;
+      patch
+        .getContext('2d')!
+        .putImageData(
+          new ImageData(new Uint8ClampedArray(frame.patch), patch.width, patch.height),
+          0,
+          0,
+        );
+      // Source-over keeps prior pixels behind transparent parts of a delta frame.
+      ctx.drawImage(patch, frame.dims.left, frame.dims.top);
+      const snapshot = document.createElement('canvas');
+      snapshot.width = width;
+      snapshot.height = height;
+      snapshot.getContext('2d')!.drawImage(canvas, 0, 0);
+      result.push({ canvas: snapshot, delay: Math.max(20, frame.delay || 100) });
+      previous = frame;
+      // Decode one frame at a time; never decompress the whole animation on the UI thread at once.
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
+    return result;
   }
 }

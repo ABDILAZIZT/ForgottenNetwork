@@ -325,6 +325,9 @@ test('HTTP and WebSocket integration: concurrent claims, presence, live art, cha
   assert.equal(uploaded.status, 201);
   assert.equal(uploaded.body.mime, 'image/png');
   assert.equal(uploaded.body.pendingReview, true);
+  assert.equal((await request('/assets')).status, 401);
+  assert.deepEqual((await request('/assets', bob.token)).body.assets, []);
+  assert.equal((await request('/assets', alice.token)).body.assets[0].moderationState, 'pending');
   assert.equal((await fetch(base + uploaded.body.url)).status, 404);
   assert.equal((await request('/avatar', alice.token, { assetId: uploaded.body.id })).status, 400);
   const queue = await request('/moderation/queue', alice.token);
@@ -340,6 +343,7 @@ test('HTTP and WebSocket integration: concurrent claims, presence, live art, cha
     'approved',
   );
   const bytes = await fetch(base + uploaded.body.url);
+  assert.equal((await request('/assets', alice.token)).body.assets[0].moderationState, 'approved');
   assert.equal(bytes.headers.get('content-type'), 'image/png');
   assert.equal((await sharp(Buffer.from(await bytes.arrayBuffer())).metadata()).width, 16);
   assert.equal(

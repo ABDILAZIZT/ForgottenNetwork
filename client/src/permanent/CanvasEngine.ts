@@ -1,6 +1,6 @@
 import { Camera } from '../engine/Camera';
 import { drawArt, loadArt } from './art';
-import { placementCells } from './geometry';
+import { availablePlacementCells, placementCells } from './geometry';
 import type { LandClaim } from '../economy';
 import type { Artwork, Blocked, Content, Peer, Placement, Point, Tool, View } from './types';
 
@@ -53,6 +53,7 @@ export class PermanentEngine {
   remoteDrafts = new Map<string, { element: Placement; cells: Point[]; seen: number }>();
   private previewCellId = '';
   private previewCells: Point[] = [];
+  private placementCellCache = new WeakMap<Placement, Point[]>();
   private broadcastAt = 0;
   private broadcasting = false;
   settings: Settings = {
@@ -402,7 +403,17 @@ export class PermanentEngine {
         height: Math.max(8, Math.abs(this.start[1] - p[1])),
       });
     } else if (this.preview) {
-      if (this.settings.draftMode) {
+      const free = availablePlacementCells(this.preview, this.occupied, this.settings.artistId);
+      if (!free.length) {
+        this.flash(
+          placementCells(this.preview).flatMap(([cx, cy]) => {
+            const owner = this.occupied.get(cx + ',' + cy);
+            return owner && owner.ownerId !== this.settings.artistId
+              ? [{ cx, cy, ownerId: owner.ownerId, ownerName: owner.ownerName }]
+              : [];
+          }),
+        );
+      } else if (this.settings.draftMode) {
         this.draftList.push(this.preview);
         this.hooks.drafts(this.draftList.length);
       } else this.hooks.commit(this.preview);
@@ -561,6 +572,21 @@ export class PermanentEngine {
     this.drawing = [];
     this.panning = false;
   };
+  private drawProtected(ctx: CanvasRenderingContext2D, e: Placement, t: number) {
+    let cells = this.placementCellCache.get(e);
+    if (!cells) {
+      cells = placementCells(e);
+      this.placementCellCache.set(e, cells);
+    }
+    ctx.save();
+    ctx.beginPath();
+    availablePlacementCells(e, this.occupied, this.settings.artistId, cells).forEach(([x, y]) =>
+      ctx.rect(x * 8, y * 8, 8, 8),
+    );
+    ctx.clip();
+    drawArt(ctx, e, t);
+    ctx.restore();
+  }
   private render = (time: number) => {
     this.camera.update();
     const ctx = this.ctx,
@@ -656,13 +682,13 @@ export class PermanentEngine {
     for (const e of [...this.draftList, ...this.pendingList]) {
       ctx.save();
       ctx.globalAlpha = 0.7;
-      drawArt(ctx, e, t);
+      this.drawProtected(ctx, e, t);
       ctx.restore();
     }
     if (this.preview) {
       ctx.save();
       ctx.globalAlpha = 0.7;
-      drawArt(ctx, this.preview, t);
+      this.drawProtected(ctx, this.preview, t);
       ctx.restore();
       if (this.previewCellId !== this.preview.id) {
         this.previewCellId = this.preview.id;

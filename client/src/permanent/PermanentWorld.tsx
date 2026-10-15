@@ -72,6 +72,7 @@ import { recordExploration } from '../exploration';
 import { readDraftMode, saveDraftMode, draftPreferenceKey } from './draftPreference';
 import { download } from '../download';
 import ColorControls from './ColorControls';
+import UploadLibrary from './UploadLibrary';
 import { PolicyLinks, RULES_SUMMARY, RULES_VERSION } from '../Policies';
 import LocaleControl from '../LocaleControl';
 import { getLocale, translate, useLocale } from '../locale';
@@ -138,6 +139,8 @@ type Pending = { actor: string; element: Placement };
 
 export default function PermanentWorld() {
   const locale = useLocale();
+  const [uploadRevision, setUploadRevision] = useState(0);
+  const [uploading, setUploading] = useState(false);
   const [utilitiesOpen, setUtilitiesOpen] = useState(false);
   const editorUpload = useRef<{ key: string; asset: Asset; id: string } | null>(null);
   const [editor, setEditor] = useState<{
@@ -842,7 +845,27 @@ export default function PermanentWorld() {
         ),
       );
     }
-    return api<Asset>('/assets', token, { data: await fileData(data) });
+    const asset = await api<Asset>('/assets', token, { data: await fileData(data) }, 60000);
+    setUploadRevision((value) => value + 1);
+    return asset;
+  };
+  const chooseMedia = (asset: Asset) => {
+    setSettings((s) => ({
+      ...s,
+      tool: 'image',
+      assetId: asset.id,
+      animated: asset.mime === 'image/gif',
+      opacity: 1,
+      rotation: 0,
+      mediaWidth: Math.min(512, asset.width, (512 * asset.width) / asset.height),
+      mediaRatio: asset.height / asset.width,
+    }));
+    setOptions(true);
+    toastMessage(
+      locale === 'ar'
+        ? 'الصورة جاهزة. اختر مكانًا فارغًا على اللوحة.'
+        : 'Image ready. Choose a free spot on the canvas.',
+    );
   };
   const uploadMedia = async (file?: File) => {
     if (!file) return;
@@ -850,33 +873,36 @@ export default function PermanentWorld() {
       setWelcome(true);
       return;
     }
-    if (file.type !== 'image/gif') {
+    if (file.type !== 'image/gif' && !/\.gif$/i.test(file.name)) {
       setEditor({ source: URL.createObjectURL(file) });
       return;
     }
     setBusy(true);
+    setUploading(true);
     try {
       const asset = await upload(file);
       if (asset.pendingReview) {
+        setSettings((s) => ({ ...s, tool: 'image', assetId: undefined }));
+        setOptions(true);
         toastMessage(
-          'Upload held for moderator review. Check Safety & privacy; it cannot be placed until approved.',
+          locale === 'ar'
+            ? 'تم رفع GIF بنجاح. حالته ظاهرة في قائمة الصور؛ ينتظر موافقة المشرف.'
+            : 'GIF uploaded. Its review status is shown in your image library.',
         );
         return;
       }
-      setSettings((s) => ({
-        ...s,
-        tool: 'image',
-        assetId: asset.id,
-        animated: asset.mime === 'image/gif',
-        mediaWidth: Math.min(256, asset.width, (512 * asset.width) / asset.height),
-        mediaRatio: asset.height / asset.width,
-      }));
-      setOptions(true);
-      toastMessage('Image ready to place.');
+      chooseMedia(asset);
     } catch (error) {
-      toastMessage((error as Error).message);
+      toastMessage(
+        (error as Error).name === 'TimeoutError'
+          ? locale === 'ar'
+            ? 'انتهت مهلة الرفع. تحقق من الاتصال وحدّث قائمة الصور قبل إعادة المحاولة.'
+            : 'Upload timed out. Check your connection and refresh the image library before retrying.'
+          : (error as Error).message,
+      );
     } finally {
       setBusy(false);
+      setUploading(false);
     }
   };
   const join = async () => {
@@ -918,7 +944,6 @@ export default function PermanentWorld() {
       setWelcome(true);
       return;
     }
-    if (tool === 'image') fileInput.current?.click();
     if (tool === 'stamp') {
       if (!session?.user.avatarId) {
         toastMessage('Add an avatar in your profile first.');
@@ -1068,6 +1093,9 @@ export default function PermanentWorld() {
       };
     const { asset, id } = editorUpload.current;
     if (asset.pendingReview) {
+      setSettings((s) => ({ ...s, tool: 'image', assetId: undefined }));
+      setOptions(true);
+      setEditor(null);
       toastMessage(
         'Upload held for moderator review. Check Safety & privacy; it cannot be published until approved.',
       );
@@ -1478,6 +1506,17 @@ export default function PermanentWorld() {
                     </label>
                   )}
                 </>
+              )}
+              {settings.tool === 'image' && session && (
+                <UploadLibrary
+                  key={session.user.id}
+                  token={session.token}
+                  revision={uploadRevision}
+                  arabic={locale === 'ar'}
+                  onChoose={chooseMedia}
+                  onUpload={() => fileInput.current?.click()}
+                  busy={busy}
+                />
               )}
               {settings.tool === 'sticker' && (
                 <>
@@ -2306,7 +2345,13 @@ export default function PermanentWorld() {
       {busy && (
         <div className="pw-busy">
           <Loader2 className="spin" size={18} />
-          Preparing your artwork
+          {uploading
+            ? locale === 'ar'
+              ? 'جارٍ رفع GIF ومعالجته…'
+              : 'Uploading and processing GIF…'
+            : locale === 'ar'
+              ? 'جارٍ تجهيز العمل…'
+              : 'Preparing your artwork'}
         </div>
       )}
       {confetti && (
