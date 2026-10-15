@@ -3,6 +3,7 @@ const sharp = require('sharp');
 const { WebSocketServer, WebSocket } = require('ws');
 const { CanvasStore, normalizeElement, fail } = require('./store');
 const path = require('node:path');
+const { releaseSha } = require('../readiness');
 
 function createPermanentCanvas({ filename, origins = [], pool } = {}) {
   let store;
@@ -123,19 +124,22 @@ function createPermanentCanvas({ filename, origins = [], pool } = {}) {
       res.json({ ready: true });
     }),
   );
-  router.get(
-    '/health',
-    route((_req, res) => {
-      get().db.prepare('SELECT 1').get();
-      res.json({
+  const checkHealth = () => get().db.prepare('SELECT 1').get();
+  router.get('/health', (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      checkHealth();
+      return res.json({
         ready: true,
         storage: 'sqlite',
         permanent: true,
-        release: process.env.RENDER_GIT_COMMIT || null,
+        release: releaseSha(),
         imageModeration: 'not-configured',
       });
-    }),
-  );
+    } catch {
+      return res.status(503).json({ ready: false, storage: 'sqlite', release: releaseSha() });
+    }
+  });
   router.post(
     '/identity',
     route((req, res) => {
@@ -506,6 +510,6 @@ function createPermanentCanvas({ filename, origins = [], pool } = {}) {
       store?.close();
     };
   }
-  return { router, attach, getStore: get };
+  return { router, attach, getStore: get, checkHealth };
 }
 module.exports = { createPermanentCanvas };

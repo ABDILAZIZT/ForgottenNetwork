@@ -32,7 +32,13 @@ test.after(async () => {
 test('health endpoint reports readiness', async () => {
   const response = await fetch(`${baseUrl}/api/health`);
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { status: 'ok' });
+  assert.deepEqual(await response.json(), {
+    status: 'ok',
+    ready: true,
+    release: null,
+    stores: { canvas: 'sqlite', worlds: 'json' },
+  });
+  assert.equal(response.headers.get('cache-control'), 'no-store');
 });
 
 test('database starts with the default creature', async () => {

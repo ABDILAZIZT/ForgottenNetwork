@@ -4,7 +4,7 @@ Updated 2026-10-15. This document describes the current implementation; earlier 
 
 ## Current decision
 
-**Ready for continued local testing and infrastructure setup, not approved for public launch.** No Render service, hosted PostgreSQL database, OIDC application or object-storage bucket has been created. The owner confirmed none is set up. No paid resources, accounts, credentials or external deployments were created by this work.
+**Ready for continued local testing and infrastructure setup, not approved for public launch.** An existing Render service is linked to the repository, but public health requests returned HTTP 503 on 2026-10-15 and the latest GitHub-recorded Render deployment of `4aa5e72` failed. The Render dashboard still requires account access to inspect the logs, database, disk, and live configuration. No paid resources, accounts, credentials or external deployments were created by this work.
 
 ## Work completed together after Phase 6
 
@@ -51,11 +51,11 @@ Updated 2026-10-15. This document describes the current implementation; earlier 
 - PostgreSQL migration checksums commit atomically with each migration.
 - Backup, empty-target restore, operator role assignment and legacy-media revalidation commands.
 - Automated security/PostgreSQL integration tests and an embedded PostgreSQL backup/restore rehearsal. The embedded runtime is a development test dependency, not a production database.
-- GitHub Actions definition for quality checks and a separate PostgreSQL 16 network integration job. The workflow is included but has not run on GitHub yet.
+- Local quality checks and an embedded PostgreSQL integration job run with `pnpm check`. A GitHub Actions workflow remains to be published once the repository credential is granted workflow scope.
 
 ## Local verification
 
-Latest automated checks (2026-10-15): `pnpm check` passed (118 tests: 3 shared, 64 client, 51 server), including formatting, lint, TypeScript and the production build. The server suite covers permanent and Classic media review, three-reporter temporary holds, and hold release. An earlier 108-test run included a local browser/API smoke check. A current browser smoke could not be completed: the Windows browser helper stopped before reloading the local preview because it could not verify the active URL. `pnpm audit --prod` previously reported no known vulnerabilities after upgrading the transitive query parser for [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g) and [GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx). An advisory scan is not a penetration test or a guarantee of security.
+Latest automated checks (2026-10-15): `pnpm check` passed (125 tests: 3 shared, 64 client, 58 server), including formatting, lint, TypeScript and the production build. The server suite covers permanent and Classic media review, three-reporter temporary holds, hold release, and combined readiness with current migration checksums. An earlier 108-test run included a local browser/API smoke check. A current browser smoke could not be completed: the Windows browser helper stopped before reloading the local preview because it could not verify the active URL. `pnpm audit --prod` previously reported no known vulnerabilities after upgrading the transitive query parser for [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g) and [GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx). An advisory scan is not a penetration test or a guarantee of security.
 
 Run `pnpm check` for formatting, lint, tests and production build. Server tests use temporary embedded PostgreSQL by default and do not touch `server/db.json` or a hosted database. For native integration, supply `TEST_DATABASE_URL` pointing to a disposable localhost database whose name ends in `_test`; use a fresh database for each run.
 
@@ -65,8 +65,8 @@ The earlier browser check covered the local community panel, contribution select
 
 ## Start here: create staging
 
-1. Create your Render account and an Auth0 (or compatible OIDC) regular web application. Keep credentials in provider secret settings, never chat or source control.
-2. Put the project in your Git repository and review `render.yaml`. It currently selects free Node and PostgreSQL plans, has no durable SQLite disk, and is not suitable for public data. Free Render PostgreSQL is temporary. Before provisioning production, choose a paid web service with persistent storage or migrate the permanent canvas to durable managed storage. Then configure `APP_ORIGIN` and `CORS_ORIGIN` to the same HTTPS origin without a trailing slash. The Blueprint provisions PostgreSQL and runs migrations before startup.
+1. Sign in to the existing Render service and inspect its failed deployment logs, PostgreSQL service, disk, and environment settings. Create an Auth0 (or compatible OIDC) regular web application only if external sign-in is desired. Keep credentials in provider secret settings, never chat or source control.
+2. Review `render.yaml` against the live service. It currently selects free Node and PostgreSQL plans, has no durable SQLite disk, and is not suitable for public data. Free Render PostgreSQL is temporary. Before publishing user data, choose a paid web service with persistent storage or migrate the permanent canvas to durable managed storage. Then configure `APP_ORIGIN` and `CORS_ORIGIN` to the same HTTPS origin without a trailing slash. The Blueprint provisions PostgreSQL and runs migrations before startup.
 3. Register `https://YOUR-STAGING-HOST/api/v1/auth/callback` with the identity provider. Set `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` and the generated `SESSION_SECRET`. Never configure development bearer tokens in production.
 4. For production media, create a private S3-compatible bucket with encryption and versioning. Configure `S3_BUCKET`, `S3_REGION`, optional `S3_ENDPOINT`, and the credential pair in the host secret store (or use a host-managed AWS identity). Grant only the bucket permissions needed for object reads/writes. No public bucket or browser storage credentials are needed. Do not remove the bucket configuration after stored records reference it.
 5. Sign in once, inspect your own `/api/v1/me` response to obtain the immutable user ID, then use a trusted operator terminal with database access:

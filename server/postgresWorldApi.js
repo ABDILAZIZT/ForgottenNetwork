@@ -5,6 +5,7 @@ const { ApiProblem } = require('./apiProblem');
 const { lockTarget, enforceQuota, checkRegion, checkAssets } = require('./worldPolicy');
 const { mediaValidation } = require('./media');
 const { createModerationApi } = require('./moderation');
+const { checkPostgresReadiness, releaseSha } = require('./readiness');
 const {
   requestHash,
   parseInteger,
@@ -113,15 +114,13 @@ function createPostgresWorldApi({ pool, objectStorage = null }) {
   router.get(
     '/health/ready',
     route(async (_req, res) => {
-      const result = await pool.query(
-        `SELECT EXISTS (
-           SELECT 1 FROM schema_migrations WHERE name = '003_launch_controls.sql'
-         ) AS migrated`,
-      );
-      if (!result.rows[0].migrated) {
-        return sendError(res, 503, 'INTERNAL_ERROR', 'Database migrations are incomplete.');
+      res.set('Cache-Control', 'no-store');
+      try {
+        await checkPostgresReadiness(pool);
+        return res.json({ status: 'ready', storage: 'postgresql', release: releaseSha() });
+      } catch {
+        return sendError(res, 503, 'INTERNAL_ERROR', 'Database is not ready.');
       }
-      return res.json({ status: 'ready', storage: 'postgresql' });
     }),
   );
 

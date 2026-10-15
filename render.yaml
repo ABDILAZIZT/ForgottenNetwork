@@ -3,9 +3,11 @@ services:
   - type: web
     name: forgotten-network
     runtime: node
+    branch: main
+    autoDeployTrigger: commit
     plan: free
     region: frankfurt
-    buildCommand: npm install -g pnpm@11.25.0 && pnpm install --production=false --no-frozen-lockfile && pnpm run build
+    buildCommand: npm install -g pnpm@11.25.0 && pnpm install --production=false --frozen-lockfile && pnpm run build
     startCommand: node server/index.js
     healthCheckPath: /api/health
     envVars:
@@ -24,9 +26,8 @@ services:
           name: forgotten-network-db
           property: connectionString
       - key: DATABASE_SSL
-        value: 'true'
-      - key: DATABASE_SSL_REJECT_UNAUTHORIZED
-        value: 'true'
+        # fromDatabase.connectionString uses Render's private network; its TLS cert is self-signed.
+        value: 'false'
       - key: MIGRATE_ON_START
         value: 'true'
       - key: SESSION_SECRET
@@ -43,6 +44,10 @@ services:
         sync: false
       - key: REQUEST_LOGS
         value: 'true'
+      - key: ADS_ENABLED
+        value: 'false'
+      - key: VITE_ADS_ENABLED
+        value: 'false'
 databases:
   - name: forgotten-network-db
     plan: free

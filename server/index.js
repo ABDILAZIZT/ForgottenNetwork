@@ -6,6 +6,7 @@ const { configureAuthentication } = require('./auth');
 const { createDatabasePool } = require('./database');
 const { createPostgresWorldApi } = require('./postgresWorldApi');
 const { runMigrations } = require('./migrate');
+const { createReadinessHandler } = require('./readiness');
 const { serveFrontend } = require('./frontend');
 const {
   securityHeaders,
@@ -114,9 +115,10 @@ function snapWorld(v) {
   return Math.round(v / WORLD_TILE) * WORLD_TILE;
 }
 
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok' });
-});
+app.get(
+  '/api/health',
+  createReadinessHandler({ pool: databasePool, checkCanvas: permanentCanvas.checkHealth }),
+);
 
 app.use(
   '/api/v1',

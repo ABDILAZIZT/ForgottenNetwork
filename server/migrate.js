@@ -3,6 +3,16 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { createDatabasePool } = require('./database');
 
+async function loadMigrations(directory = path.join(__dirname, 'migrations')) {
+  const files = (await fs.readdir(directory)).filter((name) => /^\d+.*\.sql$/.test(name)).sort();
+  return Promise.all(
+    files.map(async (name) => {
+      const sql = await fs.readFile(path.join(directory, name), 'utf8');
+      return { name, sql, sha256: crypto.createHash('sha256').update(sql).digest('hex') };
+    }),
+  );
+}
+
 async function runMigrations(pool, directory = path.join(__dirname, 'migrations')) {
   const client = await pool.connect();
   try {
@@ -15,10 +25,7 @@ async function runMigrations(pool, directory = path.join(__dirname, 'migrations'
       )
     `);
 
-    const files = (await fs.readdir(directory)).filter((name) => /^\d+.*\.sql$/.test(name)).sort();
-    for (const name of files) {
-      const sql = await fs.readFile(path.join(directory, name), 'utf8');
-      const sha256 = crypto.createHash('sha256').update(sql).digest('hex');
+    for (const { name, sql, sha256 } of await loadMigrations(directory)) {
       const existing = await client.query('SELECT sha256 FROM schema_migrations WHERE name = $1', [
         name,
       ]);
@@ -72,4 +79,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { runMigrations };
+module.exports = { loadMigrations, runMigrations };
