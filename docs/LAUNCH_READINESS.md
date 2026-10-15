@@ -4,7 +4,7 @@ Updated 2026-10-15. This document describes the current implementation; earlier 
 
 ## Current decision
 
-**Ready for continued local testing and infrastructure setup, not approved for public launch.** An existing Render service is linked to the repository, but public health requests returned HTTP 503 on 2026-10-15 and the latest GitHub-recorded Render deployment of `4aa5e72` failed. The Render dashboard still requires account access to inspect the logs, database, disk, and live configuration. No paid resources, accounts, credentials or external deployments were created by this work.
+**The Render preview is live; public launch is not approved.** The Blueprint deployment of `b01bc91941c809b9202cf9509b4a11f0372dc1b9` succeeded on 2026-10-15. The public frontend loaded, and the combined, canvas, and PostgreSQL readiness endpoints returned success with that release. The free web service has no persistent SQLite disk, so artwork and artist identities need a durable-storage migration and backup plan before inviting users. No paid hosting upgrade was made.
 
 ## Work completed together after Phase 6
 
@@ -65,7 +65,7 @@ The earlier browser check covered the local community panel, contribution select
 
 ## Start here: create staging
 
-1. Sign in to the existing Render service and inspect its failed deployment logs, PostgreSQL service, disk, and environment settings. Create an Auth0 (or compatible OIDC) regular web application only if external sign-in is desired. Keep credentials in provider secret settings, never chat or source control.
+1. Inspect the [live Render service](https://dashboard.render.com/web/srv-db1bc25g1s2s739djiv0) and its database, disk, and environment settings. The earlier startup failed with `DEPTH_ZERO_SELF_SIGNED_CERT`; the corrected Blueprint deployed successfully. Create an Auth0 (or compatible OIDC) regular web application only if external sign-in is desired. Keep credentials in provider secret settings, never chat or source control.
 2. Review `render.yaml` against the live service. It currently selects free Node and PostgreSQL plans, has no durable SQLite disk, and is not suitable for public data. Free Render PostgreSQL is temporary. Before publishing user data, choose a paid web service with persistent storage or migrate the permanent canvas to durable managed storage. Then configure `APP_ORIGIN` and `CORS_ORIGIN` to the same HTTPS origin without a trailing slash. The Blueprint provisions PostgreSQL and runs migrations before startup.
 3. Register `https://YOUR-STAGING-HOST/api/v1/auth/callback` with the identity provider. Set `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` and the generated `SESSION_SECRET`. Never configure development bearer tokens in production.
 4. For production media, create a private S3-compatible bucket with encryption and versioning. Configure `S3_BUCKET`, `S3_REGION`, optional `S3_ENDPOINT`, and the credential pair in the host secret store (or use a host-managed AWS identity). Grant only the bucket permissions needed for object reads/writes. No public bucket or browser storage credentials are needed. Do not remove the bucket configuration after stored records reference it.

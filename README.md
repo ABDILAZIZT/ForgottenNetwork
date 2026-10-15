@@ -30,7 +30,7 @@ Forgotten Network brings a drawing studio and a shared world into one browser ex
 
 The project also preserves earlier saved worlds through **Tools & saved worlds**. Those records keep their existing storage format and are not automatically published onto the shared canvas.
 
-> **Project status:** active development. Local setup is available; public deployment is awaiting verification. See [launch readiness](docs/LAUNCH_READINESS.md) for the current operational status and remaining work.
+> **Project status:** active development. The [Render preview](https://forgotten-network.onrender.com) is live. Public launch still needs durable storage, moderation setup, backups, and operator checks. See [launch readiness](docs/LAUNCH_READINESS.md).
 
 ## What you can do
 

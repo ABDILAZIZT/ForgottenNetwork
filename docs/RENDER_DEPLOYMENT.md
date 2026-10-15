@@ -4,13 +4,13 @@
 
 ## Verified status — 2026-10-15
 
-- GitHub `main` was verified at `4aa5e723b1784f4da0fac13c2b42203e11f7a6d9` before this deployment-preparation change.
-- The existing service is [forgotten-network.onrender.com](https://forgotten-network.onrender.com). Direct requests to `/api/health`, `/api/canvas/health`, and `/api/v1/health/ready` returned **HTTP 503** during this review.
-- GitHub records two Render deployment attempts for `4aa5e72`. The newer attempt ended in **failure**; the Render logs are needed to identify the exact cause. This does not establish which build is currently running.
-- The earlier Blueprint set `DATABASE_SSL=true` with certificate verification while sourcing the database's internal Render URL. Render's [PostgreSQL guidance](https://render.com/docs/postgresql-creating-connecting) says internal connections use self-signed certificates. The Blueprint now uses the private connection without TLS; this is a likely startup fix, pending confirmation from logs.
-- The Render dashboard required sign-in. Service logs, environment values, persistent disks, billing plan, and auto-deploy settings could not yet be inspected. No hosting upgrade, data migration, or resource purchase was performed.
+- The [Render preview](https://forgotten-network.onrender.com) is live. Its successful Blueprint deployment used GitHub commit `b01bc91941c809b9202cf9509b4a11f0372dc1b9` on `main`.
+- The preceding auto-deploy failed to start: the logs showed `DEPTH_ZERO_SELF_SIGNED_CERT` during PostgreSQL migrations. It was canceled to let the queued Blueprint deployment proceed.
+- The earlier Blueprint required TLS with certificate verification for the same-region internal Render PostgreSQL URL. Render's [PostgreSQL guidance](https://render.com/docs/postgresql-creating-connecting) says internal connections can use TLS with self-signed certificates. The corrected Blueprint uses that private connection without TLS; migrations 006 and 007 then applied and the service reached Live.
+- The public frontend loaded, and `/api/health`, `/api/canvas/health`, and `/api/v1/health/ready` returned success with the same release SHA. Public auth configuration and world entities were readable. The terminal smoke command could not run from this workspace because its network resolver returned `ENOTFOUND`; these checks were completed through the browser.
+- The service remains on the free web plan without a persistent SQLite disk. No hosting upgrade, data migration, or resource purchase was performed.
 
-**The live deployment is not verified.** Resolve the dashboard access and service failure before inviting users.
+**The preview runs, but it is not ready for public user data.** Complete the storage, moderation, backup, and operator checks below before inviting users.
 
 ## 1. Inspect the existing service
 
