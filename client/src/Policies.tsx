@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, readSaved } from './permanent/api';
 import { AdConsentSettings } from './components/AdConsent';
-import LocaleControl from './LocaleControl';
 import { translate, useLocale } from './locale';
 import './policies.css';
 
@@ -416,7 +415,6 @@ export function PolicyPage() {
         <a href="/" lang={locale} dir="auto">
           {translate('policy.back', locale)}
         </a>
-        <LocaleControl />
       </div>
       {locale === 'ar' && (
         <p lang="ar" dir="rtl">

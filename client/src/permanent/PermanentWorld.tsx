@@ -83,7 +83,11 @@ import { download } from '../download';
 import ColorControls from './ColorControls';
 import UploadLibrary from './UploadLibrary';
 import { PolicyLinks, RULES_SUMMARY, RULES_VERSION } from '../Policies';
-import LocaleControl from '../LocaleControl';
+import { useReducedMotion } from '../components/useReducedMotion';
+import { usePageVisible } from '../components/usePageVisible';
+import { locationUrl, readLocation } from '../location';
+import { useShareLink } from '../components/ShareNotice';
+import { discoverLocation } from './discover';
 import { getLocale, translate, useLocale } from '../locale';
 
 const COLORS = [
@@ -184,6 +188,8 @@ export default function PermanentWorld() {
   const mediaBusy = useRef(false);
   const [mediaError, setMediaError] = useState('');
   const [mediaPhase, setMediaPhase] = useState('');
+  const { share, notice: shareNotice } = useShareLink();
+  const visible = usePageVisible();
   const [settings, setSettings] = useState<Settings>({
     ...initialSettings,
     draftMode: readDraftMode(session?.user.id),
@@ -193,6 +199,10 @@ export default function PermanentWorld() {
   const [stats, setStats] = useState<Stats | null>(null),
     [profile, setProfile] = useState<Profile | null>(null),
     [peers, setPeers] = useState<Peer[]>([]);
+  const reducedMotion = useReducedMotion(settings.reducedMotion);
+  useEffect(() => {
+    document.documentElement.dataset.reducedMotion = String(reducedMotion);
+  }, [reducedMotion]);
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme || 'dark';
     try {
@@ -258,6 +268,11 @@ export default function PermanentWorld() {
     commitRef = useRef<(e: Placement) => void>(() => undefined),
     removeRef = useRef<(arts: Artwork[]) => void>(() => undefined),
     exportRef = useRef<(v: View) => void>(() => undefined);
+  useEffect(() => {
+    if (!confetti) return;
+    const timer = setTimeout(() => setConfetti(false), 3000);
+    return () => clearTimeout(timer);
+  }, [confetti]);
   const toastMessage = useCallback((text: string) => {
     setToast(text);
     clearTimeout(toastTimer.current);
@@ -338,7 +353,7 @@ export default function PermanentWorld() {
           );
           if (result.profile.elements === 1) {
             setConfetti(true);
-            setTimeout(() => setConfetti(false), 3000);
+
             toastMessage('First Stroke unlocked. Your mark is part of the world.');
             play('badge');
           } else play(result.element.type === 'image' ? 'pop' : 'stroke');
@@ -502,7 +517,19 @@ export default function PermanentWorld() {
         setSettings((s) => ({ ...s, color, tool: 'brush' }));
       },
       commit: (e) => commitRef.current(e),
-      view: setView,
+      view: (next) => {
+        setView(next);
+        const url = locationUrl(
+          location.origin,
+          location.pathname + location.search,
+          next.x + next.width / 2,
+          next.y + next.height / 2,
+          next.zoom || 0.9,
+          undefined,
+          null,
+        );
+        if (url !== location.href) history.replaceState(history.state, '', url);
+      },
       hover: (art, x, y) => setHover(art ? { art, x, y } : null),
       select: setSelected,
       preview: (element) => {
@@ -537,16 +564,8 @@ export default function PermanentWorld() {
       eraseArtwork: (art) => removeRef.current([art]),
     });
     engine.current = world;
-    const params = new URLSearchParams(location.search);
-    const x = Number(params.get('x') || 0),
-      y = Number(params.get('y') || 0);
-    if (
-      Number.isFinite(x) &&
-      Number.isFinite(y) &&
-      Math.abs(x) <= 1000000 &&
-      Math.abs(y) <= 1000000
-    )
-      world.fly(x, y);
+    const destination = readLocation(location.search, 0.9);
+    world.fly(destination.x, destination.y, destination.zoom);
     void document.fonts.ready.then(clearArtCache);
     void Promise.all(FONTS.map((font) => document.fonts.load('700 24px "' + font + '"')))
       .then(clearArtCache)
@@ -571,10 +590,11 @@ export default function PermanentWorld() {
   useEffect(() => {
     engine.current?.configure({
       ...settings,
+      reducedMotion,
       artistId: session?.user.id,
       enabled: Boolean(session),
     });
-  }, [settings, session]);
+  }, [settings, session, reducedMotion]);
   useEffect(() => {
     const world = engine.current;
     if (!world) return;
@@ -595,10 +615,10 @@ export default function PermanentWorld() {
     setPendingCount(world.pendingList.length);
   }, [session?.user.id]);
   useEffect(() => {
-    if (!pendingCount) return;
+    if (!pendingCount || !visible) return;
     const retry = setInterval(() => void drain(), 5000);
     return () => clearInterval(retry);
-  }, [pendingCount, drain]);
+  }, [pendingCount, drain, visible]);
   const areaKey = [
     Math.floor(view.x / 512),
     Math.floor(view.y / 512),
@@ -737,10 +757,11 @@ export default function PermanentWorld() {
     };
   }, [session?.token, drain, refresh, toastMessage]);
   useEffect(() => {
+    if (!visible) return;
     void refresh();
     const id = setInterval(() => void refresh(), 30000);
     return () => clearInterval(id);
-  }, [refresh]);
+  }, [refresh, visible]);
   useEffect(() => {
     if (selected)
       void api<Artwork>('/elements/' + selected.id)
@@ -978,6 +999,7 @@ export default function PermanentWorld() {
       return;
     }
     if (tool === 'stamp') {
+      setOptions(true);
       if (!session?.user.avatarId) {
         toastMessage('Add an avatar in your profile first.');
         setPanel('profile');
@@ -1176,22 +1198,13 @@ export default function PermanentWorld() {
   return (
     <main
       className="pw-world"
-      data-reduced-motion={settings.reducedMotion}
+      data-reduced-motion={reducedMotion}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
         void uploadMedia(e.dataTransfer.files[0]);
       }}
     >
-      <StudioUtilities
-        open={utilitiesOpen}
-        onClose={() => setUtilitiesOpen(false)}
-        hidden={welcome}
-        token={session?.token}
-        engine={engine.current}
-        onMedia={(file) => void uploadMedia(file)}
-        onNotice={toastMessage}
-      />
       {editor && (
         <RasterStudio
           source={editor.source}
@@ -1227,24 +1240,6 @@ export default function PermanentWorld() {
         tabIndex={0}
         aria-label={translate('canvas.label', locale)}
       />
-      <Expedition
-        x={view.x + view.width / 2}
-        y={view.y + view.height / 2}
-        hidden={welcome}
-        reducedMotion={settings.reducedMotion}
-        onDiscover={() => {
-          const locations = stats?.density || [];
-          const selected = locations[Math.floor(Math.random() * locations.length)];
-          if (selected) engine.current?.fly(selected.x * 512 + 256, selected.y * 512 + 256, 1.2);
-          else void findFree();
-        }}
-        onVisit={(x, y) => engine.current?.fly(x, y, 1.5)}
-        onDraw={() => selectTool('pixel')}
-        onRefresh={() => {
-          void refresh();
-          void loadArea(view).catch(() => toastMessage('Could not refresh this neighborhood.'));
-        }}
-      />
       <header className="pw-top">
         <a className="pw-brand" href="/" aria-label={translate('brand.home', locale)}>
           <span className="pw-brand-icon">
@@ -1262,7 +1257,6 @@ export default function PermanentWorld() {
           </span>
         </div>
         <div className="pw-top-actions">
-          <LocaleControl />
           <button
             title={translate('header.toolsLabel', locale)}
             aria-label={translate('header.toolsLabel', locale)}
@@ -1333,230 +1327,127 @@ export default function PermanentWorld() {
           </button>
         </div>
       </header>
-      {!welcome && !session && (
-        <div className="pw-world-heading">
-          <span className="pw-eyebrow">
-            <span /> ONE WORLD. EVERYONE'S STORY.
-          </span>
-          <h1>
-            Leave a little
-            <br />
-            <em>you</em> here.
-          </h1>
-          <p>
-            {count(stats?.artworks)} marks. {count(stats?.artists)} artists. Infinite possibility.
-          </p>
-        </div>
-      )}
-      <nav className={'pw-toolbar ' + (expanded ? 'expanded' : '')} aria-label="Canvas tools">
-        <button
-          className="pw-tool-toggle"
-          title={expanded ? 'Collapse toolbar' : 'Expand toolbar'}
-          onClick={() => setExpanded(!expanded)}
-        >
-          {expanded ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
-        </button>
-        {TOOLS.map(([tool, Icon, label, key]) => (
-          <button
-            key={tool}
-            title={label + ' [' + key + ']'}
-            aria-label={label}
-            aria-pressed={settings.tool === tool}
-            className={settings.tool === tool ? 'active' : ''}
-            onClick={() => selectTool(tool)}
-          >
-            <Icon size={20} />
-            {expanded && (
-              <span>
-                {label}
-                <kbd>{key}</kbd>
+      <div className="pw-docks">
+        <div className="pw-left-column">
+          {!welcome && !session && (
+            <div className="pw-world-heading">
+              <span className="pw-eyebrow">
+                <span /> ONE WORLD. EVERYONE'S STORY.
               </span>
-            )}
-          </button>
-        ))}
-        <span className="pw-tool-divider" />
-        <button
-          title="Tool settings"
-          aria-label="Tool settings"
-          onClick={() => setOptions(!options)}
-        >
-          <Settings2 size={19} />
-          {expanded && <span>Tool settings</span>}
-        </button>
-      </nav>
-      {!welcome && options && (
-        <section
-          className={
-            'pw-tool-options ' +
-            (expanded ? 'offset ' : '') +
-            (settings.tool === 'image' ? 'pw-media-options' : '')
-          }
-          aria-label="Tool settings panel"
-        >
-          <div className="pw-section-title">
-            <ActiveIcon size={16} />
-            <strong>{activeTool[2]}</strong>
+              <h1>
+                Leave a little
+                <br />
+                <em>you</em> here.
+              </h1>
+              <p>
+                {count(stats?.artworks)} marks. {count(stats?.artists)} artists. Infinite
+                possibility.
+              </p>
+            </div>
+          )}
+          <nav className={'pw-toolbar ' + (expanded ? 'expanded' : '')} aria-label="Canvas tools">
             <button
-              className="pw-icon"
-              title="Close tool settings"
-              onClick={() => setOptions(false)}
+              className="pw-tool-toggle"
+              title={expanded ? 'Collapse toolbar' : 'Expand toolbar'}
+              onClick={() => setExpanded(!expanded)}
             >
-              <X size={14} />
+              {expanded ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
             </button>
-          </div>
-          {settings.tool === 'image' && session ? (
-            <>
-              <UploadLibrary
-                key={session.user.id}
-                token={session.token}
-                revision={uploadRevision}
-                selectedId={settings.assetId}
-                onChoose={chooseMedia}
-                onUpload={() => fileInput.current?.click()}
-                busy={busy || uploading}
-                error={mediaError}
-                phase={mediaPhase}
-              />
-              {settings.assetId && (
-                <div className="pw-media-placement">
-                  <label>
-                    Size{' '}
-                    <b>
-                      {Math.round(settings.mediaWidth)} ×{' '}
-                      {Math.round(settings.mediaWidth * settings.mediaRatio)} px
-                    </b>
-                    <input
-                      aria-label="Image size"
-                      type="range"
-                      min={1}
-                      max={Math.max(1, Math.floor(Math.min(512, 512 / settings.mediaRatio)))}
-                      value={settings.mediaWidth}
-                      onChange={(e) =>
-                        setSettings((s) => ({ ...s, mediaWidth: Number(e.target.value) }))
-                      }
-                    />
-                  </label>
-                  <p>
-                    {settings.draftMode
-                      ? 'Click a free spot, then publish your draft.'
-                      : 'Click a free spot to publish immediately.'}
-                  </p>
-                  <button onClick={() => void findFree()}>
-                    <MapPin size={14} /> Find space for this image
-                  </button>
-                  <small>Esc cancels placement.</small>
-                </div>
-              )}
-            </>
-          ) : settings.tool === 'eraser' ? (
-            <p className="pw-muted">
-              Erase drafts by dragging. Click your published artwork to remove the whole artwork
-              after confirmation. Other artists are protected.
-            </p>
-          ) : (
-            <>
-              {['brush', 'pixel', 'line', 'arrow', 'text', 'rectangle', 'ellipse'].includes(
-                settings.tool,
-              ) && (
-                <label>
-                  Size / stroke <b>{settings.size}px</b>
-                  <input
-                    aria-label="Brush size"
-                    type="range"
-                    min={1}
-                    max={64}
-                    value={settings.size}
-                    onChange={(e) => setSettings((s) => ({ ...s, size: Number(e.target.value) }))}
+            {TOOLS.map(([tool, Icon, label, key]) => (
+              <button
+                key={tool}
+                title={label + ' [' + key + ']'}
+                aria-label={label}
+                aria-pressed={settings.tool === tool}
+                className={settings.tool === tool ? 'active' : ''}
+                onClick={() => selectTool(tool)}
+              >
+                <Icon size={20} />
+                {expanded && (
+                  <span>
+                    {label}
+                    <kbd>{key}</kbd>
+                  </span>
+                )}
+              </button>
+            ))}
+            <span className="pw-tool-divider" />
+            <button
+              title="Tool settings"
+              aria-label="Tool settings"
+              onClick={() => setOptions(!options)}
+            >
+              <Settings2 size={19} />
+              {expanded && <span>Tool settings</span>}
+            </button>
+          </nav>
+          {!welcome && options && !['pan', 'export', 'eyedropper'].includes(settings.tool) && (
+            <section
+              className={
+                'pw-tool-options ' +
+                (expanded ? 'offset ' : '') +
+                (settings.tool === 'image' ? 'pw-media-options' : '')
+              }
+              aria-label="Tool settings panel"
+            >
+              <div className="pw-section-title">
+                <ActiveIcon size={16} />
+                <strong>{activeTool[2]}</strong>
+                <button
+                  className="pw-icon"
+                  title="Close tool settings"
+                  onClick={() => setOptions(false)}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              {settings.tool === 'image' && session ? (
+                <>
+                  <UploadLibrary
+                    key={session.user.id}
+                    token={session.token}
+                    revision={uploadRevision}
+                    selectedId={settings.assetId}
+                    onChoose={chooseMedia}
+                    onUpload={() => fileInput.current?.click()}
+                    busy={busy || uploading}
+                    error={mediaError}
+                    phase={mediaPhase}
                   />
-                </label>
-              )}
-              {settings.tool === 'brush' && (
-                <>
-                  <label>
-                    Brush
-                    <select
-                      value={settings.brush || 'ink'}
-                      onChange={(e) =>
-                        setSettings((s) => ({ ...s, brush: e.target.value as Settings['brush'] }))
-                      }
-                    >
-                      {['pencil', 'marker', 'ink', 'airbrush'].map((b) => (
-                        <option key={b}>{b}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Smoothing
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.05}
-                      value={settings.smoothing || 0}
-                      onChange={(e) =>
-                        setSettings((s) => ({ ...s, smoothing: Number(e.target.value) }))
-                      }
-                    />
-                  </label>
+                  {settings.assetId && (
+                    <div className="pw-media-placement">
+                      <label>
+                        Size{' '}
+                        <b>
+                          {Math.round(settings.mediaWidth)} ×{' '}
+                          {Math.round(settings.mediaWidth * settings.mediaRatio)} px
+                        </b>
+                        <input
+                          aria-label="Image size"
+                          type="range"
+                          min={1}
+                          max={Math.max(1, Math.floor(Math.min(512, 512 / settings.mediaRatio)))}
+                          value={settings.mediaWidth}
+                          onChange={(e) =>
+                            setSettings((s) => ({ ...s, mediaWidth: Number(e.target.value) }))
+                          }
+                        />
+                      </label>
+                      <p>
+                        {settings.draftMode
+                          ? 'Click a free spot, then publish your draft.'
+                          : 'Click a free spot to publish immediately.'}
+                      </p>
+                      <button onClick={() => void findFree()}>
+                        <MapPin size={14} /> Find space for this image
+                      </button>
+                      <small>Esc cancels placement.</small>
+                    </div>
+                  )}
                 </>
-              )}
-              {['rectangle', 'ellipse'].includes(settings.tool) && (
+              ) : settings.tool === 'stamp' ? (
                 <>
-                  <label>
-                    Shape style
-                    <select
-                      value={settings.fill === false ? 'outline' : 'filled'}
-                      onChange={(e) =>
-                        setSettings((s) => ({ ...s, fill: e.target.value === 'filled' }))
-                      }
-                    >
-                      <option value="filled">Filled</option>
-                      <option value="outline">Outline</option>
-                    </select>
-                  </label>
-                  <label>
-                    Stroke color
-                    <input
-                      type="color"
-                      value={settings.strokeColor || settings.color}
-                      onChange={(e) => setSettings((s) => ({ ...s, strokeColor: e.target.value }))}
-                    />
-                  </label>
-                </>
-              )}
-              <label>
-                Opacity <b>{Math.round(settings.opacity * 100)}%</b>
-                <input
-                  aria-label="Opacity"
-                  type="range"
-                  min={0.1}
-                  max={1}
-                  step={0.05}
-                  value={settings.opacity}
-                  onChange={(e) => setSettings((s) => ({ ...s, opacity: Number(e.target.value) }))}
-                />
-              </label>
-              {settings.tool === 'text' && (
-                <>
-                  <textarea
-                    aria-label="Canvas text"
-                    value={settings.text}
-                    maxLength={120}
-                    onChange={(e) => setSettings((s) => ({ ...s, text: e.target.value }))}
-                  />
-                  <select
-                    aria-label="Text font"
-                    value={settings.font}
-                    onChange={(e) => setSettings((s) => ({ ...s, font: e.target.value }))}
-                  >
-                    {FONTS.map((font) => (
-                      <option key={font}>{font}</option>
-                    ))}
-                  </select>
-                </>
-              )}
-              {['image', 'stamp', 'sticker'].includes(settings.tool) && (
-                <>
+                  {' '}
                   <label>
                     Width <b>{settings.mediaWidth}px</b>
                     <input
@@ -1570,128 +1461,899 @@ export default function PermanentWorld() {
                       }
                     />
                   </label>
-                  {settings.tool !== 'sticker' && (
+                  <label>
+                    Image rotation <b>{settings.rotation || 0}°</b>
+                    <input
+                      aria-label="Image rotation"
+                      type="range"
+                      min={-180}
+                      max={180}
+                      value={settings.rotation || 0}
+                      onChange={(e) =>
+                        setSettings((s) => ({ ...s, rotation: Number(e.target.value) }))
+                      }
+                    />
+                  </label>{' '}
+                  <label>
+                    Opacity <b>{Math.round(settings.opacity * 100)}%</b>
+                    <input
+                      aria-label="Opacity"
+                      type="range"
+                      min={0.1}
+                      max={1}
+                      step={0.05}
+                      value={settings.opacity}
+                      onChange={(e) =>
+                        setSettings((s) => ({ ...s, opacity: Number(e.target.value) }))
+                      }
+                    />
+                  </label>
+                </>
+              ) : settings.tool === 'eraser' ? (
+                <p className="pw-muted">
+                  Erase drafts by dragging. Click your published artwork to remove the whole artwork
+                  after confirmation. Other artists are protected.
+                </p>
+              ) : (
+                <>
+                  {(['brush', 'pixel', 'line', 'arrow', 'text'].includes(settings.tool) ||
+                    (['rectangle', 'ellipse'].includes(settings.tool) &&
+                      settings.fill === false)) && (
                     <label>
-                      Image rotation <b>{settings.rotation || 0}°</b>
+                      Size / stroke <b>{settings.size}px</b>
                       <input
-                        aria-label="Image rotation"
+                        aria-label="Brush size"
                         type="range"
-                        min={-180}
-                        max={180}
-                        value={settings.rotation || 0}
+                        min={1}
+                        max={64}
+                        value={settings.size}
                         onChange={(e) =>
-                          setSettings((s) => ({ ...s, rotation: Number(e.target.value) }))
+                          setSettings((s) => ({ ...s, size: Number(e.target.value) }))
                         }
                       />
-                      <small>Aspect ratio is preserved inside the placement frame.</small>
                     </label>
+                  )}
+                  {settings.tool === 'brush' && (
+                    <>
+                      <label>
+                        Brush
+                        <select
+                          value={settings.brush || 'ink'}
+                          onChange={(e) =>
+                            setSettings((s) => ({
+                              ...s,
+                              brush: e.target.value as Settings['brush'],
+                            }))
+                          }
+                        >
+                          {['pencil', 'marker', 'ink', 'airbrush'].map((b) => (
+                            <option key={b}>{b}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Smoothing
+                        <input
+                          type="range"
+                          min={0}
+                          max={1}
+                          step={0.05}
+                          value={settings.smoothing || 0}
+                          onChange={(e) =>
+                            setSettings((s) => ({ ...s, smoothing: Number(e.target.value) }))
+                          }
+                        />
+                      </label>
+                    </>
+                  )}
+                  {['rectangle', 'ellipse'].includes(settings.tool) && (
+                    <>
+                      <label>
+                        Shape style
+                        <select
+                          value={settings.fill === false ? 'outline' : 'filled'}
+                          onChange={(e) =>
+                            setSettings((s) => ({ ...s, fill: e.target.value === 'filled' }))
+                          }
+                        >
+                          <option value="filled">Filled</option>
+                          <option value="outline">Outline</option>
+                        </select>
+                      </label>
+                      {settings.fill === false && (
+                        <label>
+                          Stroke color
+                          <input
+                            type="color"
+                            value={settings.strokeColor || settings.color}
+                            onChange={(e) =>
+                              setSettings((s) => ({ ...s, strokeColor: e.target.value }))
+                            }
+                          />
+                        </label>
+                      )}
+                    </>
+                  )}
+                  <label>
+                    Opacity <b>{Math.round(settings.opacity * 100)}%</b>
+                    <input
+                      aria-label="Opacity"
+                      type="range"
+                      min={0.1}
+                      max={1}
+                      step={0.05}
+                      value={settings.opacity}
+                      onChange={(e) =>
+                        setSettings((s) => ({ ...s, opacity: Number(e.target.value) }))
+                      }
+                    />
+                  </label>
+                  {settings.tool === 'text' && (
+                    <>
+                      <textarea
+                        aria-label="Canvas text"
+                        value={settings.text}
+                        maxLength={120}
+                        onChange={(e) => setSettings((s) => ({ ...s, text: e.target.value }))}
+                      />
+                      <select
+                        aria-label="Text font"
+                        value={settings.font}
+                        onChange={(e) => setSettings((s) => ({ ...s, font: e.target.value }))}
+                      >
+                        {FONTS.map((font) => (
+                          <option key={font}>{font}</option>
+                        ))}
+                      </select>
+                    </>
+                  )}
+                  {['image', 'sticker'].includes(settings.tool) && (
+                    <>
+                      <label>
+                        Width <b>{settings.mediaWidth}px</b>
+                        <input
+                          aria-label="Placement width"
+                          type="range"
+                          min={16}
+                          max={Math.min(512, 512 / settings.mediaRatio)}
+                          value={settings.mediaWidth}
+                          onChange={(e) =>
+                            setSettings((s) => ({ ...s, mediaWidth: Number(e.target.value) }))
+                          }
+                        />
+                      </label>
+                      {settings.tool !== 'sticker' && (
+                        <label>
+                          Image rotation <b>{settings.rotation || 0}°</b>
+                          <input
+                            aria-label="Image rotation"
+                            type="range"
+                            min={-180}
+                            max={180}
+                            value={settings.rotation || 0}
+                            onChange={(e) =>
+                              setSettings((s) => ({ ...s, rotation: Number(e.target.value) }))
+                            }
+                          />
+                          <small>Aspect ratio is preserved inside the placement frame.</small>
+                        </label>
+                      )}
+                    </>
+                  )}
+                  {settings.tool === 'sticker' && (
+                    <>
+                      <div className="pw-sticker-picker">
+                        {STICKERS.map((sticker) => (
+                          <button
+                            key={sticker}
+                            aria-label={'Sticker ' + sticker}
+                            title={sticker}
+                            className={settings.sticker === sticker ? 'active' : ''}
+                            onClick={() => setSettings((s) => ({ ...s, sticker }))}
+                          >
+                            <StickerPreview name={sticker} color={settings.color} />
+                          </button>
+                        ))}
+                      </div>
+                      <label className="pw-check">
+                        <input
+                          type="checkbox"
+                          checked={settings.animated}
+                          onChange={(e) =>
+                            setSettings((s) => ({ ...s, animated: e.target.checked }))
+                          }
+                        />
+                        Animate sticker
+                      </label>
+                    </>
+                  )}
+                  {!(
+                    ['rectangle', 'ellipse'].includes(settings.tool) && settings.fill === false
+                  ) && (
+                    <>
+                      <div className="pw-color-heading">
+                        <span>COLOR</span>
+                        <button
+                          title="Use signature color"
+                          onClick={() => chooseColor(session?.user.color || COLORS[0])}
+                        >
+                          <span style={{ background: session?.user.color || COLORS[0] }} /> My
+                          signature
+                        </button>
+                      </div>
+                      <div className="pw-swatches">
+                        {COLORS.map((color) => (
+                          <button
+                            key={color}
+                            aria-label={'Color ' + color}
+                            title={color}
+                            style={{ background: color }}
+                            className={settings.color === color ? 'selected' : ''}
+                            onClick={() => chooseColor(color)}
+                          />
+                        ))}
+                      </div>
+                      <div className="pw-custom-color">
+                        <input
+                          aria-label="Custom color"
+                          type="color"
+                          value={settings.color}
+                          onChange={(e) => chooseColor(e.target.value)}
+                        />
+                        <span>{settings.color.toUpperCase()}</span>
+                        <Palette size={16} />
+                      </div>
+                      <ColorControls value={settings.color} onChange={chooseColor} />
+                      {!!recent.length && (
+                        <div className="pw-recent">
+                          {recent.map((color) => (
+                            <button
+                              key={color}
+                              title={'Recent ' + color}
+                              style={{ background: color }}
+                              onClick={() => chooseColor(color)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
                 </>
               )}
-              {settings.tool === 'sticker' && (
+              {settings.tool !== 'stamp' && (
                 <>
-                  <div className="pw-sticker-picker">
-                    {STICKERS.map((sticker) => (
-                      <button
-                        key={sticker}
-                        aria-label={'Sticker ' + sticker}
-                        title={sticker}
-                        className={settings.sticker === sticker ? 'active' : ''}
-                        onClick={() => setSettings((s) => ({ ...s, sticker }))}
-                      >
-                        <StickerPreview name={sticker} color={settings.color} />
-                      </button>
-                    ))}
-                  </div>
                   <label className="pw-check">
                     <input
                       type="checkbox"
-                      checked={settings.animated}
-                      onChange={(e) => setSettings((s) => ({ ...s, animated: e.target.checked }))}
+                      checked={settings.draftMode}
+                      onChange={(e) => {
+                        if (!session) return;
+                        try {
+                          saveDraftMode(session.user.id, e.target.checked);
+                          setSettings((s) => ({ ...s, draftMode: e.target.checked }));
+                        } catch {
+                          setSettings((s) => ({ ...s, draftMode: true }));
+                          toastMessage('Could not save your preference. Draft mode remains on.');
+                        }
+                      }}
                     />
-                    Animate sticker
+                    Draft before publishing
                   </label>
+                  {drafts > 0 && (
+                    <div className="pw-draft-actions">
+                      <button title="Undo draft" onClick={() => engine.current?.undoDraft()}>
+                        <Undo2 size={16} /> Undo draft
+                      </button>
+                    </div>
+                  )}
+                  {settings.tool !== 'image' && (
+                    <div className="pw-permanent-note">
+                      <Lock size={12} /> Manage your own work. Moderators can hide reported content.
+                    </div>
+                  )}
                 </>
               )}
-              <div className="pw-color-heading">
-                <span>COLOR</span>
+            </section>
+          )}
+        </div>
+        <div className="pw-right-column">
+          <Expedition
+            x={view.x + view.width / 2}
+            y={view.y + view.height / 2}
+            zoom={view.zoom || 0.9}
+            hidden={welcome}
+            reducedMotion={reducedMotion}
+            onDiscover={() => {
+              const target = discoverLocation(
+                engine.current?.getView() || view,
+                stats?.density || [],
+              );
+              engine.current?.fly(target.x, target.y, view.zoom || 0.9);
+            }}
+            onVisit={(x, y) => engine.current?.fly(x, y, 1.5)}
+          />
+          <StudioUtilities
+            open={utilitiesOpen}
+            onClose={() => setUtilitiesOpen(false)}
+            hidden={welcome}
+            token={session?.token}
+            engine={engine.current}
+            onMedia={(file) => void uploadMedia(file)}
+            onNotice={toastMessage}
+          />
+          {!welcome && (
+            <aside className="pw-discover">
+              <div className="pw-permanence">
+                <ShieldCheck size={17} />
+                <span>
+                  Your pixels. <strong>Your creative space.</strong>
+                </span>
+              </div>
+              <button className="pw-free-space" onClick={() => void findFree()}>
+                <Compass size={17} />
+                Find free space
+                <ArrowUpRight size={16} />
+              </button>
+              {stats?.challenge && (
                 <button
-                  title="Use signature color"
-                  onClick={() => chooseColor(session?.user.color || COLORS[0])}
+                  className="pw-challenge"
+                  onClick={() => {
+                    engine.current!.highlightChallenge = true;
+                    engine.current?.fly(stats.challenge.x + 96, stats.challenge.y + 96, 2);
+                  }}
                 >
-                  <span style={{ background: session?.user.color || COLORS[0] }} /> My signature
+                  <Target size={20} />
+                  <span>
+                    <small>DAILY CHALLENGE</small>
+                    <strong>
+                      {profile?.challengeDone
+                        ? 'Challenge complete'
+                        : 'Make a mark in the green zone'}
+                    </strong>
+                  </span>
+                  <b>+100 XP</b>
+                </button>
+              )}
+              {stats?.spotlight && (
+                <button
+                  className="pw-spotlight"
+                  onClick={() => {
+                    const e = stats.spotlight!;
+                    engine.current?.fly(e.x + e.width / 2, e.y + e.height / 2, 1.4);
+                    setSelected(e);
+                  }}
+                >
+                  <Star size={17} />
+                  <span>
+                    <small>COMMUNITY SPOTLIGHT</small>
+                    <strong>
+                      {stats.spotlight.ownerName}'s {stats.spotlight.type}
+                    </strong>
+                  </span>
+                  <ArrowUpRight size={16} />
+                </button>
+              )}
+            </aside>
+          )}
+          <div className="pw-corner-tools">
+            <button
+              title="Jump to my art"
+              disabled={!profile?.last}
+              onClick={() =>
+                profile?.last
+                  ? engine.current?.fly(
+                      profile.last.x + profile.last.width / 2,
+                      profile.last.y + profile.last.height / 2,
+                      1.5,
+                    )
+                  : toastMessage('Your first mark will make this your home.')
+              }
+            >
+              <MapPin size={18} />
+            </button>
+            <button title={sound ? 'Mute sounds' : 'Enable ambient sound'} onClick={toggleSound}>
+              {sound ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            </button>
+            <button title="Canvas preferences" onClick={() => togglePanel('settings')}>
+              <Settings2 size={18} />
+            </button>
+            <button
+              className={panel === 'chat' ? 'active' : ''}
+              title="Canvas chat"
+              onClick={() => togglePanel('chat')}
+            >
+              <MessageCircle size={18} />
+              <span>Live chat</span>
+            </button>
+          </div>
+          {!welcome && (
+            <WorldMap
+              theme={settings.theme || 'dark'}
+              stats={stats}
+              view={view}
+              onJump={(x, y) => engine.current?.fly(x, y)}
+            />
+          )}
+          {selected && !welcome && (
+            <aside className="pw-inspector">
+              <div className="pw-section-title">
+                <span className="pw-author-dot" style={{ background: selected.ownerColor }} />
+                <strong>{selected.ownerName}</strong>
+                <button className="pw-icon" title="Close artwork" onClick={() => setSelected(null)}>
+                  <X size={16} />
                 </button>
               </div>
-              <div className="pw-swatches">
-                {COLORS.map((color) => (
-                  <button
-                    key={color}
-                    aria-label={'Color ' + color}
-                    title={color}
-                    style={{ background: color }}
-                    className={settings.color === color ? 'selected' : ''}
-                    onClick={() => chooseColor(color)}
-                  />
-                ))}
-              </div>
-              <div className="pw-custom-color">
-                <input
-                  aria-label="Custom color"
-                  type="color"
-                  value={settings.color}
-                  onChange={(e) => chooseColor(e.target.value)}
-                />
-                <span>{settings.color.toUpperCase()}</span>
-                <Palette size={16} />
-              </div>
-              <ColorControls value={settings.color} onChange={chooseColor} />
-              {!!recent.length && (
-                <div className="pw-recent">
-                  {recent.map((color) => (
-                    <button
-                      key={color}
-                      title={'Recent ' + color}
-                      style={{ background: color }}
-                      onClick={() => chooseColor(color)}
-                    />
-                  ))}
+              <span className="pw-eyebrow">A PIECE OF THIS SHARED WORLD</span>
+              <h2>
+                {selected.type === 'text'
+                  ? selected.content.text
+                  : selected.type === 'sticker'
+                    ? selected.content.sticker + ' / ' + selected.ownerName
+                    : 'A mark by ' + selected.ownerName}
+              </h2>
+              <dl>
+                <div>
+                  <dt>Placed</dt>
+                  <dd>{new Date(selected.timestamp).toLocaleString()}</dd>
                 </div>
+                <div>
+                  <dt>Owned area</dt>
+                  <dd>{count(selected.cells.length * 64)} pixels</dd>
+                </div>
+                <div>
+                  <dt>Location</dt>
+                  <dd>
+                    {Math.round(selected.x)}, {Math.round(selected.y)}
+                  </dd>
+                </div>
+              </dl>
+              {selected.ownerId === session?.user.id && (
+                <>
+                  <button
+                    className="pw-wide-button"
+                    onClick={() => {
+                      void (async () => {
+                        try {
+                          await loadArt(selected);
+                          const tile = document.createElement('canvas');
+                          tile.width = selected.width;
+                          tile.height = selected.height;
+                          const ctx = tile.getContext('2d')!;
+                          ctx.translate(-selected.x, -selected.y);
+                          drawArt(ctx, selected);
+                          setEditor({ source: tile.toDataURL('image/png'), original: selected });
+                        } catch (error) {
+                          toastMessage((error as Error).message);
+                        }
+                      })();
+                    }}
+                  >
+                    Edit / transform artwork{selected.content.animated ? ' (still frame)' : ''}
+                  </button>
+                  <button className="pw-wide-button" onClick={() => removeRef.current([selected])}>
+                    Delete this artwork
+                  </button>
+                </>
               )}
-            </>
-          )}
-          <label className="pw-check">
-            <input
-              type="checkbox"
-              checked={settings.draftMode}
-              onChange={(e) => {
-                if (!session) return;
-                try {
-                  saveDraftMode(session.user.id, e.target.checked);
-                  setSettings((s) => ({ ...s, draftMode: e.target.checked }));
-                } catch {
-                  setSettings((s) => ({ ...s, draftMode: true }));
-                  toastMessage('Could not save your preference. Draft mode remains on.');
+              <a href={'/safety?type=artwork&id=' + encodeURIComponent(selected.id)}>
+                Report artwork
+              </a>
+              <a href={'/safety?type=profile&id=' + encodeURIComponent(selected.ownerId)}>
+                Report artist profile
+              </a>
+              <div className="pw-reactions">
+                {(['heart', 'fire', 'star'] as const).map((kind, i) => {
+                  const Icon = [Heart, Flame, Star][i];
+                  return (
+                    <button
+                      key={kind}
+                      title={'React with ' + kind}
+                      onClick={() => void react(kind)}
+                    >
+                      <Icon size={18} />
+                      {selected.reactions?.find((r) => r.kind === kind)?.count || 0}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="pw-muted">
+                {nearby.length} {nearby.length === 1 ? 'explorer' : 'explorers'} watching nearby
+              </p>
+              <button
+                className="pw-wide-button"
+                onClick={() =>
+                  void share(
+                    locationUrl(
+                      location.origin,
+                      location.pathname + location.search,
+                      selected.x + selected.width / 2,
+                      selected.y + selected.height / 2,
+                      view.zoom || 1.5,
+                      undefined,
+                      null,
+                    ),
+                  )
                 }
-              }}
-            />
-            Draft before publishing
-          </label>
-          {drafts > 0 && (
-            <div className="pw-draft-actions">
-              <button title="Undo draft" onClick={() => engine.current?.undoDraft()}>
-                <Undo2 size={16} />
+              >
+                <ArrowUpRight size={16} />
+                Share this mark
               </button>
-              <button className="pw-publish-drafts" onClick={() => engine.current?.publishDrafts()}>
-                <ArrowUpRight size={16} /> Publish {drafts} {drafts === 1 ? 'draft' : 'drafts'}
-              </button>
-            </div>
+            </aside>
           )}
-          {settings.tool !== 'image' && (
-            <div className="pw-permanent-note">
-              <Lock size={12} /> Manage your own work. Moderators can hide reported content.
-            </div>
+          {panel && !welcome && (
+            <aside className="pw-panel">
+              <div className="pw-section-title">
+                <strong>
+                  {panel === 'leaderboard'
+                    ? 'Artists'
+                    : panel === 'profile'
+                      ? 'Your place in the world'
+                      : panel === 'notifications'
+                        ? 'Your art, appreciated'
+                        : panel === 'settings'
+                          ? 'Canvas preferences'
+                          : 'The neighborhood'}
+                </strong>
+                <button className="pw-icon" title="Close panel" onClick={() => setPanel(null)}>
+                  <X size={18} />
+                </button>
+              </div>
+              {panel === 'leaderboard' && (
+                <>
+                  <p className="pw-muted">Every claimed pixel is a little piece of history.</p>
+                  <div className="pw-ranking-label">
+                    <span>ARTIST</span>
+                    <span>AREA OWNED</span>
+                  </div>
+                  {stats?.leaderboard.map((user, i) => (
+                    <div className="pw-rank" key={user.id}>
+                      <span>{String(i + 1).padStart(2, '0')}</span>
+                      <span
+                        className="pw-avatar"
+                        style={{ background: user.color + '25', color: user.color }}
+                      >
+                        {user.name[0]}
+                      </span>
+                      <strong>
+                        {user.name}
+                        <small>{user.elements} marks</small>
+                      </strong>
+                      <b>{count(user.pixels)}</b>
+                    </div>
+                  ))}
+                </>
+              )}
+              {panel === 'profile' && session && (
+                <>
+                  <div className="pw-profile-hero">
+                    <span
+                      className="pw-avatar large"
+                      style={{ color: session.user.color, background: session.user.color + '22' }}
+                    >
+                      {session.user.avatarId ? (
+                        <img
+                          loading="lazy"
+                          src={assetUrl(session.user.avatarId)}
+                          alt="Your avatar"
+                        />
+                      ) : (
+                        session.user.name[0]
+                      )}
+                    </span>
+                    <div>
+                      <h2>{session.user.name}</h2>
+                      <span>A creator in the network</span>
+                    </div>
+                  </div>
+                  <div className="pw-personal-stats">
+                    <div>
+                      <strong>{count(profile?.pixels)}</strong>
+                      <span>pixels owned</span>
+                    </div>
+                    <div>
+                      <strong>{profile?.elements || 0}</strong>
+                      <span>marks placed</span>
+                    </div>
+                    <div>
+                      <strong>{profile?.daysActive || 1}</strong>
+                      <span>days active</span>
+                    </div>
+                    <div>
+                      <strong>{profile?.xp || 0}</strong>
+                      <span>XP earned</span>
+                    </div>
+                  </div>
+                  <div className="pw-streak">
+                    <Flame size={25} />
+                    <strong>{profile?.streak || 1} day streak</strong>
+                    <span>See you tomorrow.</span>
+                  </div>
+                  <h3>Your achievements</h3>
+                  <div className="pw-badges">
+                    {[
+                      'First Stroke',
+                      '1000 Pixels',
+                      'Image Artist',
+                      'Social Butterfly',
+                      'Territory King',
+                    ].map((b) => (
+                      <span key={b} className={profile?.badges.includes(b) ? 'earned' : ''}>
+                        <ShieldCheck size={16} />
+                        {b}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="pw-muted">
+                    Largest connected territory: {count(profile?.largestArea)} pixels.
+                  </p>
+                  <label className="pw-wide-button">
+                    <ImagePlus size={16} />
+                    Change avatar
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      hidden
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setEditor({ source: URL.createObjectURL(file), avatar: true });
+                      }}
+                    />
+                  </label>
+                  <button
+                    className="pw-wide-button"
+                    onClick={() =>
+                      download(
+                        new Blob([session.token], { type: 'text/plain' }),
+                        'forgotten-network-identity-key.txt',
+                      )
+                    }
+                  >
+                    <ArrowDownToLine size={16} />
+                    Back up identity key
+                  </button>
+                  <p className="pw-muted">
+                    Keep your key private. It restores access to your identity on another device.
+                  </p>
+                  <p className="pw-muted">
+                    Earlier saved worlds are available in Tools & saved worlds.
+                  </p>
+                </>
+              )}
+              {panel === 'chat' && (
+                <>
+                  <div className="pw-chat-messages">
+                    {chat.length ? (
+                      chat.map((m) => (
+                        <article key={m.id}>
+                          <div>
+                            <strong>{m.name}</strong>
+                            <time>
+                              {new Date(m.timestamp).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </time>
+                          </div>
+                          <p>{m.body}</p>
+                          <a href={'/safety?type=chat&id=' + encodeURIComponent(m.id)}>
+                            Report message
+                          </a>
+                        </article>
+                      ))
+                    ) : (
+                      <div className="pw-empty">
+                        <MessageCircle size={32} />
+                        <p>
+                          A new neighborhood.
+                          <br />
+                          Start the conversation.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <form className="pw-chat-compose" onSubmit={sendMessage}>
+                    <input
+                      aria-label="Chat message"
+                      placeholder="Say something kind..."
+                      value={message}
+                      maxLength={280}
+                      onChange={(e) => setMessage(e.target.value)}
+                    />
+                    <button title="Send message" disabled={!message.trim()}>
+                      <Send size={17} />
+                    </button>
+                  </form>
+                </>
+              )}
+              {panel === 'notifications' && (
+                <>
+                  {notifications.length ? (
+                    notifications.map((n, i) => (
+                      <button
+                        className="pw-notice-row"
+                        key={n.timestamp + i}
+                        onClick={() => engine.current?.fly(n.x, n.y, 1.5)}
+                      >
+                        <Heart size={17} />
+                        <span>
+                          <strong>{n.name}</strong> left a {n.kind} on your art
+                          <small>{new Date(n.timestamp).toLocaleString()}</small>
+                        </span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="pw-empty">
+                      <Heart size={32} />
+                      <p>
+                        Your art is out there.
+                        <br />
+                        Appreciation will find its way here.
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+              {panel === 'profile' && session && (
+                <section aria-label="Manage my artwork">
+                  <h3>Your published artworks</h3>
+                  {myArt.elements.map((art) => (
+                    <button
+                      key={art.id}
+                      className="pw-wide-button"
+                      onClick={() => {
+                        setSelected(art);
+                        setPanel(null);
+                        engine.current?.fly(art.x, art.y);
+                      }}
+                    >
+                      {art.type} at {art.x}, {art.y}
+                    </button>
+                  ))}
+                  <h3>Recently removed (30-day recovery)</h3>
+                  {myArt.removed.map((item) => (
+                    <button
+                      key={item.id}
+                      className="pw-wide-button"
+                      onClick={async () => {
+                        if (
+                          !window.confirm(
+                            'Restore this removed artwork if the space is still available?',
+                          )
+                        )
+                          return;
+                        try {
+                          const art = await api<Artwork>(
+                            '/elements/' + item.id + '/restore',
+                            session.token,
+                            {},
+                          );
+                          engine.current?.restore(art);
+                          setMyArt(await api<typeof myArt>('/my-artworks', session.token));
+                          toastMessage('Artwork restored.');
+                        } catch (error) {
+                          toastMessage((error as Error).message);
+                        }
+                      }}
+                    >
+                      Restore {item.id.slice(0, 8)} ({new Date(item.removedAt).toLocaleDateString()}
+                      )
+                    </button>
+                  ))}
+                </section>
+              )}
+              {panel === 'settings' && (
+                <>
+                  <button
+                    className="pw-wide-button"
+                    onClick={() =>
+                      setSettings((s) => ({ ...s, theme: s.theme === 'light' ? 'dark' : 'light' }))
+                    }
+                  >
+                    {translate('settings.switchTheme', locale, {
+                      theme: translate(
+                        settings.theme === 'light' ? 'settings.dark' : 'settings.light',
+                        locale,
+                      ),
+                    })}
+                  </button>
+                  {(['grid', 'snap', 'rulers'] as const).map((key) => (
+                    <label className="pw-check" key={key}>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(settings[key])}
+                        onChange={(e) => setSettings((s) => ({ ...s, [key]: e.target.checked }))}
+                      />
+                      {translate(
+                        key === 'snap'
+                          ? 'settings.snap'
+                          : key === 'rulers'
+                            ? 'settings.rulers'
+                            : 'settings.grid',
+                        locale,
+                      )}
+                    </label>
+                  ))}
+                  <PolicyLinks />
+                  <p>
+                    Clear Space removes only your published artworks fully inside the visible area.
+                    It does not find free space or clear drafts.
+                  </p>
+                  <button
+                    className="pw-wide-button"
+                    onClick={() => {
+                      const arts = [...(engine.current?.elements.values() || [])].filter(
+                        (e) =>
+                          e.ownerId === session?.user.id &&
+                          e.x >= view.x &&
+                          e.y >= view.y &&
+                          e.x + e.width <= view.x + view.width &&
+                          e.y + e.height <= view.y + view.height,
+                      );
+                      removeRef.current(arts.slice(0, 400));
+                    }}
+                  >
+                    Clear Space: my visible artworks
+                  </button>
+                  <button
+                    className="pw-wide-button"
+                    onClick={() => {
+                      if (
+                        !window.confirm(
+                          'Clear unpublished drafts on this device? Published artwork is untouched.',
+                        )
+                      )
+                        return;
+                      if (engine.current) {
+                        engine.current.draftList = [];
+                        setDrafts(0);
+                      }
+                      if (session)
+                        localStorage.setItem('fn_canvas_drafts:' + session.user.id, '[]');
+                    }}
+                  >
+                    Clear Drafts on this device
+                  </button>
+                  <label className="pw-check">
+                    <input
+                      type="checkbox"
+                      checked={settings.reducedMotion}
+                      onChange={(e) =>
+                        setSettings((s) => ({ ...s, reducedMotion: e.target.checked }))
+                      }
+                    />
+                    {translate('settings.reducedMotion', locale)}
+                  </label>
+                  <label className="pw-check">
+                    <input type="checkbox" checked={sound} onChange={toggleSound} />
+                    {translate('settings.sound', locale)}
+                  </label>
+                  <button className="pw-wide-button" onClick={() => exportRef.current(view)}>
+                    <ArrowDownToLine size={16} />
+                    {translate('settings.export', locale)}
+                  </button>
+                  <p className="pw-muted">All drawing tools now live in this studio.</p>
+                </>
+              )}
+            </aside>
           )}
-        </section>
+        </div>
+      </div>
+      {hover && !welcome && !selected && (
+        <div
+          className="pw-art-hover"
+          style={{
+            left: Math.min(innerWidth - 230, Math.max(8, hover.x + 18)),
+            top: Math.min(innerHeight - 115, hover.y + 20),
+            borderColor: hover.art.ownerColor,
+          }}
+        >
+          <span style={{ color: hover.art.ownerColor }}>{hover.art.ownerName}</span>
+          <small>Placed {new Date(hover.art.timestamp).toLocaleString()}</small>
+          <button onClick={() => setSelected(hover.art)}>
+            Inspect artwork <ArrowUpRight size={12} />
+          </button>
+        </div>
       )}
       <div className="pw-bottom">
         <span className="pw-coordinates">
@@ -1724,551 +2386,6 @@ export default function PermanentWorld() {
           </button>
         </div>
       </div>
-      {!welcome && (
-        <aside className="pw-discover">
-          <div className="pw-permanence">
-            <ShieldCheck size={17} />
-            <span>
-              Your pixels. <strong>Your creative space.</strong>
-            </span>
-          </div>
-          <button className="pw-free-space" onClick={() => void findFree()}>
-            <Compass size={17} />
-            Find free space
-            <ArrowUpRight size={16} />
-          </button>
-          {stats?.challenge && (
-            <button
-              className="pw-challenge"
-              onClick={() => {
-                engine.current!.highlightChallenge = true;
-                engine.current?.fly(stats.challenge.x + 96, stats.challenge.y + 96, 2);
-              }}
-            >
-              <Target size={20} />
-              <span>
-                <small>DAILY CHALLENGE</small>
-                <strong>
-                  {profile?.challengeDone ? 'Challenge complete' : 'Make a mark in the green zone'}
-                </strong>
-              </span>
-              <b>+100 XP</b>
-            </button>
-          )}
-          {stats?.spotlight && (
-            <button
-              className="pw-spotlight"
-              onClick={() => {
-                const e = stats.spotlight!;
-                engine.current?.fly(e.x + e.width / 2, e.y + e.height / 2, 1.4);
-                setSelected(e);
-              }}
-            >
-              <Star size={17} />
-              <span>
-                <small>COMMUNITY SPOTLIGHT</small>
-                <strong>
-                  {stats.spotlight.ownerName}'s {stats.spotlight.type}
-                </strong>
-              </span>
-              <ArrowUpRight size={16} />
-            </button>
-          )}
-        </aside>
-      )}
-      <div className="pw-corner-tools">
-        <button
-          title="Jump to my art"
-          onClick={() =>
-            profile?.last
-              ? engine.current?.fly(
-                  profile.last.x + profile.last.width / 2,
-                  profile.last.y + profile.last.height / 2,
-                  1.5,
-                )
-              : toastMessage('Your first mark will make this your home.')
-          }
-        >
-          <MapPin size={18} />
-        </button>
-        <button title={sound ? 'Mute sounds' : 'Enable ambient sound'} onClick={toggleSound}>
-          {sound ? <Volume2 size={18} /> : <VolumeX size={18} />}
-        </button>
-        <button title="Canvas preferences" onClick={() => togglePanel('settings')}>
-          <Settings2 size={18} />
-        </button>
-        <button
-          className={panel === 'chat' ? 'active' : ''}
-          title="Canvas chat"
-          onClick={() => togglePanel('chat')}
-        >
-          <MessageCircle size={18} />
-          <span>Live chat</span>
-        </button>
-      </div>
-      {!welcome && (
-        <WorldMap stats={stats} view={view} onJump={(x, y) => engine.current?.fly(x, y)} />
-      )}
-      {hover && !welcome && !selected && (
-        <div
-          className="pw-art-hover"
-          style={{
-            left: Math.min(innerWidth - 230, Math.max(8, hover.x + 18)),
-            top: Math.min(innerHeight - 115, hover.y + 20),
-            borderColor: hover.art.ownerColor,
-          }}
-        >
-          <span style={{ color: hover.art.ownerColor }}>{hover.art.ownerName}</span>
-          <small>Placed {new Date(hover.art.timestamp).toLocaleString()}</small>
-          <button onClick={() => setSelected(hover.art)}>
-            Inspect artwork <ArrowUpRight size={12} />
-          </button>
-        </div>
-      )}
-      {selected && !welcome && (
-        <aside className="pw-inspector">
-          <div className="pw-section-title">
-            <span className="pw-author-dot" style={{ background: selected.ownerColor }} />
-            <strong>{selected.ownerName}</strong>
-            <button className="pw-icon" title="Close artwork" onClick={() => setSelected(null)}>
-              <X size={16} />
-            </button>
-          </div>
-          <span className="pw-eyebrow">A PIECE OF THIS SHARED WORLD</span>
-          <h2>
-            {selected.type === 'text'
-              ? selected.content.text
-              : selected.type === 'sticker'
-                ? selected.content.sticker + ' / ' + selected.ownerName
-                : 'A mark by ' + selected.ownerName}
-          </h2>
-          <dl>
-            <div>
-              <dt>Placed</dt>
-              <dd>{new Date(selected.timestamp).toLocaleString()}</dd>
-            </div>
-            <div>
-              <dt>Owned area</dt>
-              <dd>{count(selected.cells.length * 64)} pixels</dd>
-            </div>
-            <div>
-              <dt>Location</dt>
-              <dd>
-                {Math.round(selected.x)}, {Math.round(selected.y)}
-              </dd>
-            </div>
-          </dl>
-          {selected.ownerId === session?.user.id && (
-            <>
-              <button
-                className="pw-wide-button"
-                onClick={() => {
-                  void (async () => {
-                    try {
-                      await loadArt(selected);
-                      const tile = document.createElement('canvas');
-                      tile.width = selected.width;
-                      tile.height = selected.height;
-                      const ctx = tile.getContext('2d')!;
-                      ctx.translate(-selected.x, -selected.y);
-                      drawArt(ctx, selected);
-                      setEditor({ source: tile.toDataURL('image/png'), original: selected });
-                    } catch (error) {
-                      toastMessage((error as Error).message);
-                    }
-                  })();
-                }}
-              >
-                Edit / transform artwork{selected.content.animated ? ' (still frame)' : ''}
-              </button>
-              <button className="pw-wide-button" onClick={() => removeRef.current([selected])}>
-                Delete this artwork
-              </button>
-            </>
-          )}
-          <a href={'/safety?type=artwork&id=' + encodeURIComponent(selected.id)}>Report artwork</a>
-          <a href={'/safety?type=profile&id=' + encodeURIComponent(selected.ownerId)}>
-            Report artist profile
-          </a>
-          <div className="pw-reactions">
-            {(['heart', 'fire', 'star'] as const).map((kind, i) => {
-              const Icon = [Heart, Flame, Star][i];
-              return (
-                <button key={kind} title={'React with ' + kind} onClick={() => void react(kind)}>
-                  <Icon size={18} />
-                  {selected.reactions?.find((r) => r.kind === kind)?.count || 0}
-                </button>
-              );
-            })}
-          </div>
-          <p className="pw-muted">
-            {nearby.length} {nearby.length === 1 ? 'explorer' : 'explorers'} watching nearby
-          </p>
-          <button
-            className="pw-wide-button"
-            onClick={() =>
-              void navigator.clipboard
-                .writeText(location.origin + '/?x=' + selected.x + '&y=' + selected.y)
-                .then(
-                  () => toastMessage('Art link copied.'),
-                  () => toastMessage('Could not copy the link.'),
-                )
-            }
-          >
-            <ArrowUpRight size={16} />
-            Share this mark
-          </button>
-        </aside>
-      )}
-      {panel && !welcome && (
-        <aside className="pw-panel">
-          <div className="pw-section-title">
-            <strong>
-              {panel === 'leaderboard'
-                ? 'This week’s artists'
-                : panel === 'profile'
-                  ? 'Your place in the world'
-                  : panel === 'notifications'
-                    ? 'Your art, appreciated'
-                    : panel === 'settings'
-                      ? 'Canvas preferences'
-                      : 'The neighborhood'}
-            </strong>
-            <button className="pw-icon" title="Close panel" onClick={() => setPanel(null)}>
-              <X size={18} />
-            </button>
-          </div>
-          {panel === 'leaderboard' && (
-            <>
-              <p className="pw-muted">Every claimed pixel is a little piece of history.</p>
-              <div className="pw-ranking-label">
-                <span>ARTIST</span>
-                <span>AREA OWNED</span>
-              </div>
-              {stats?.leaderboard.map((user, i) => (
-                <div className="pw-rank" key={user.id}>
-                  <span>{String(i + 1).padStart(2, '0')}</span>
-                  <span
-                    className="pw-avatar"
-                    style={{ background: user.color + '25', color: user.color }}
-                  >
-                    {user.name[0]}
-                  </span>
-                  <strong>
-                    {user.name}
-                    <small>{user.elements} marks</small>
-                  </strong>
-                  <b>{count(user.pixels)}</b>
-                </div>
-              ))}
-            </>
-          )}
-          {panel === 'profile' && session && (
-            <>
-              <div className="pw-profile-hero">
-                <span
-                  className="pw-avatar large"
-                  style={{ color: session.user.color, background: session.user.color + '22' }}
-                >
-                  {session.user.avatarId ? (
-                    <img loading="lazy" src={assetUrl(session.user.avatarId)} alt="Your avatar" />
-                  ) : (
-                    session.user.name[0]
-                  )}
-                </span>
-                <div>
-                  <h2>{session.user.name}</h2>
-                  <span>A creator in the network</span>
-                </div>
-              </div>
-              <div className="pw-personal-stats">
-                <div>
-                  <strong>{count(profile?.pixels)}</strong>
-                  <span>pixels owned</span>
-                </div>
-                <div>
-                  <strong>{profile?.elements || 0}</strong>
-                  <span>marks placed</span>
-                </div>
-                <div>
-                  <strong>{profile?.daysActive || 1}</strong>
-                  <span>days active</span>
-                </div>
-                <div>
-                  <strong>{profile?.xp || 0}</strong>
-                  <span>XP earned</span>
-                </div>
-              </div>
-              <div className="pw-streak">
-                <Flame size={25} />
-                <strong>{profile?.streak || 1} day streak</strong>
-                <span>See you tomorrow.</span>
-              </div>
-              <h3>Your achievements</h3>
-              <div className="pw-badges">
-                {[
-                  'First Stroke',
-                  '1000 Pixels',
-                  'Image Artist',
-                  'Social Butterfly',
-                  'Territory King',
-                ].map((b) => (
-                  <span key={b} className={profile?.badges.includes(b) ? 'earned' : ''}>
-                    <ShieldCheck size={16} />
-                    {b}
-                  </span>
-                ))}
-              </div>
-              <p className="pw-muted">
-                Largest connected territory: {count(profile?.largestArea)} pixels.
-              </p>
-              <label className="pw-wide-button">
-                <ImagePlus size={16} />
-                Change avatar
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  hidden
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    setEditor({ source: URL.createObjectURL(file), avatar: true });
-                  }}
-                />
-              </label>
-              <button
-                className="pw-wide-button"
-                onClick={() =>
-                  download(
-                    new Blob([session.token], { type: 'text/plain' }),
-                    'forgotten-network-identity-key.txt',
-                  )
-                }
-              >
-                <ArrowDownToLine size={16} />
-                Back up identity key
-              </button>
-              <p className="pw-muted">
-                Keep your key private. It restores access to your identity on another device.
-              </p>
-              <p className="pw-muted">
-                Earlier saved worlds are available in Tools & saved worlds.
-              </p>
-            </>
-          )}
-          {panel === 'chat' && (
-            <>
-              <div className="pw-chat-messages">
-                {chat.length ? (
-                  chat.map((m) => (
-                    <article key={m.id}>
-                      <div>
-                        <strong>{m.name}</strong>
-                        <time>
-                          {new Date(m.timestamp).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </time>
-                      </div>
-                      <p>{m.body}</p>
-                      <a href={'/safety?type=chat&id=' + encodeURIComponent(m.id)}>
-                        Report message
-                      </a>
-                    </article>
-                  ))
-                ) : (
-                  <div className="pw-empty">
-                    <MessageCircle size={32} />
-                    <p>
-                      A new neighborhood.
-                      <br />
-                      Start the conversation.
-                    </p>
-                  </div>
-                )}
-              </div>
-              <form className="pw-chat-compose" onSubmit={sendMessage}>
-                <input
-                  aria-label="Chat message"
-                  placeholder="Say something kind..."
-                  value={message}
-                  maxLength={280}
-                  onChange={(e) => setMessage(e.target.value)}
-                />
-                <button title="Send message" disabled={!message.trim()}>
-                  <Send size={17} />
-                </button>
-              </form>
-            </>
-          )}
-          {panel === 'notifications' && (
-            <>
-              {notifications.length ? (
-                notifications.map((n, i) => (
-                  <button
-                    className="pw-notice-row"
-                    key={n.timestamp + i}
-                    onClick={() => engine.current?.fly(n.x, n.y, 1.5)}
-                  >
-                    <Heart size={17} />
-                    <span>
-                      <strong>{n.name}</strong> left a {n.kind} on your art
-                      <small>{new Date(n.timestamp).toLocaleString()}</small>
-                    </span>
-                  </button>
-                ))
-              ) : (
-                <div className="pw-empty">
-                  <Heart size={32} />
-                  <p>
-                    Your art is out there.
-                    <br />
-                    Appreciation will find its way here.
-                  </p>
-                </div>
-              )}
-            </>
-          )}
-          {panel === 'profile' && session && (
-            <section aria-label="Manage my artwork">
-              <h3>Your published artworks</h3>
-              {myArt.elements.map((art) => (
-                <button
-                  key={art.id}
-                  className="pw-wide-button"
-                  onClick={() => {
-                    setSelected(art);
-                    setPanel(null);
-                    engine.current?.fly(art.x, art.y);
-                  }}
-                >
-                  {art.type} at {art.x}, {art.y}
-                </button>
-              ))}
-              <h3>Recently removed (30-day recovery)</h3>
-              {myArt.removed.map((item) => (
-                <button
-                  key={item.id}
-                  className="pw-wide-button"
-                  onClick={async () => {
-                    if (
-                      !window.confirm(
-                        'Restore this removed artwork if the space is still available?',
-                      )
-                    )
-                      return;
-                    try {
-                      const art = await api<Artwork>(
-                        '/elements/' + item.id + '/restore',
-                        session.token,
-                        {},
-                      );
-                      engine.current?.restore(art);
-                      setMyArt(await api<typeof myArt>('/my-artworks', session.token));
-                      toastMessage('Artwork restored.');
-                    } catch (error) {
-                      toastMessage((error as Error).message);
-                    }
-                  }}
-                >
-                  Restore {item.id.slice(0, 8)} ({new Date(item.removedAt).toLocaleDateString()})
-                </button>
-              ))}
-            </section>
-          )}
-          {panel === 'settings' && (
-            <>
-              <button
-                className="pw-wide-button"
-                onClick={() =>
-                  setSettings((s) => ({ ...s, theme: s.theme === 'light' ? 'dark' : 'light' }))
-                }
-              >
-                {translate('settings.switchTheme', locale, {
-                  theme: translate(
-                    settings.theme === 'light' ? 'settings.dark' : 'settings.light',
-                    locale,
-                  ),
-                })}
-              </button>
-              {(['grid', 'snap', 'rulers'] as const).map((key) => (
-                <label className="pw-check" key={key}>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(settings[key])}
-                    onChange={(e) => setSettings((s) => ({ ...s, [key]: e.target.checked }))}
-                  />
-                  {translate(
-                    key === 'snap'
-                      ? 'settings.snap'
-                      : key === 'rulers'
-                        ? 'settings.rulers'
-                        : 'settings.grid',
-                    locale,
-                  )}
-                </label>
-              ))}
-              <PolicyLinks />
-              <p>
-                Clear Space removes only your published artworks fully inside the visible area. It
-                does not find free space or clear drafts.
-              </p>
-              <button
-                className="pw-wide-button"
-                onClick={() => {
-                  const arts = [...(engine.current?.elements.values() || [])].filter(
-                    (e) =>
-                      e.ownerId === session?.user.id &&
-                      e.x >= view.x &&
-                      e.y >= view.y &&
-                      e.x + e.width <= view.x + view.width &&
-                      e.y + e.height <= view.y + view.height,
-                  );
-                  removeRef.current(arts.slice(0, 400));
-                }}
-              >
-                Clear Space: my visible artworks
-              </button>
-              <button
-                className="pw-wide-button"
-                onClick={() => {
-                  if (
-                    !window.confirm(
-                      'Clear unpublished drafts on this device? Published artwork is untouched.',
-                    )
-                  )
-                    return;
-                  if (engine.current) {
-                    engine.current.draftList = [];
-                    setDrafts(0);
-                  }
-                  if (session) localStorage.setItem('fn_canvas_drafts:' + session.user.id, '[]');
-                }}
-              >
-                Clear Drafts on this device
-              </button>
-              <label className="pw-check">
-                <input
-                  type="checkbox"
-                  checked={settings.reducedMotion}
-                  onChange={(e) => setSettings((s) => ({ ...s, reducedMotion: e.target.checked }))}
-                />
-                {translate('settings.reducedMotion', locale)}
-              </label>
-              <label className="pw-check">
-                <input type="checkbox" checked={sound} onChange={toggleSound} />
-                {translate('settings.sound', locale)}
-              </label>
-              <button className="pw-wide-button" onClick={() => exportRef.current(view)}>
-                <ArrowDownToLine size={16} />
-                {translate('settings.export', locale)}
-              </button>
-              <p className="pw-muted">All drawing tools now live in this studio.</p>
-            </>
-          )}
-        </aside>
-      )}
       {welcome && (
         <section
           className="pw-welcome"
@@ -2374,7 +2491,6 @@ export default function PermanentWorld() {
               >
                 {translate('welcome.explore', locale)} <ArrowUpRight size={13} />
               </button>
-              <LocaleControl />
               <details>
                 <summary>{translate('welcome.returning', locale)}</summary>
                 <input
@@ -2422,7 +2538,7 @@ export default function PermanentWorld() {
           {uploading
             ? locale === 'ar'
               ? 'جارٍ رفع GIF ومعالجته…'
-              : 'Uploading and processing GIF…'
+              : mediaPhase || 'Uploading image…'
             : locale === 'ar'
               ? 'جارٍ تجهيز العمل…'
               : 'Preparing your artwork'}
@@ -2443,6 +2559,7 @@ export default function PermanentWorld() {
           ))}
         </div>
       )}
+      {shareNotice}
       {toast && (
         <div className="pw-toast" role="status">
           <Sparkles size={16} />
@@ -2476,10 +2593,12 @@ function StickerPreview({ name, color }: { name: string; color: string }) {
 }
 
 function WorldMap({
+  theme,
   stats,
   view,
   onJump,
 }: {
+  theme: 'light' | 'dark';
   stats: Stats | null;
   view: View;
   onJump: (x: number, y: number) => void;
@@ -2497,13 +2616,15 @@ function WorldMap({
       span = Math.max(Math.max(...xs) - minX + 1, Math.max(...ys) - minY + 1);
     extent.current = { minX, minY, span };
     ctx.clearRect(0, 0, 160, 104);
-    ctx.fillStyle = '#0a0a12';
+    const palette = getComputedStyle(document.documentElement);
+    ctx.fillStyle = palette.getPropertyValue('--canvas-bg').trim();
     ctx.fillRect(0, 0, 160, 104);
     const scale = 96 / span,
       ox = 32,
       oy = 4;
     cells.forEach((c) => {
-      ctx.fillStyle = 'rgba(167,139,250,' + Math.min(0.95, 0.2 + c.cells / 1500) + ')';
+      ctx.fillStyle = palette.getPropertyValue('--accent').trim();
+      ctx.globalAlpha = Math.min(0.95, 0.4 + c.cells / 1500);
       ctx.fillRect(
         ox + (c.x - minX) * scale,
         oy + (c.y - minY) * scale,
@@ -2511,7 +2632,8 @@ function WorldMap({
         Math.max(2, scale - 1),
       );
     });
-    ctx.strokeStyle = '#22d3ee';
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = palette.getPropertyValue('--accent-2').trim();
     ctx.lineWidth = 1;
     ctx.strokeRect(
       ox + (view.x / 512 - minX) * scale,
@@ -2519,7 +2641,7 @@ function WorldMap({
       (view.width / 512) * scale,
       (view.height / 512) * scale,
     );
-  }, [stats, view]);
+  }, [stats, view, theme]);
   return (
     <div className="pw-minimap">
       <div>

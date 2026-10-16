@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTheme } from './useTheme';
 import { CHUNK_PX } from '../engine/Chunk';
 import type { ZoneType } from '../engine/Chunk';
 
@@ -23,6 +24,7 @@ interface Props {
 const MAP_SIZE = 150;
 
 export default function Minimap({ viewport, chunks, onTeleport }: Props) {
+  const theme = useTheme();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -30,6 +32,7 @@ export default function Minimap({ viewport, chunks, onTeleport }: Props) {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    const palette = getComputedStyle(document.documentElement);
     ctx.clearRect(0, 0, MAP_SIZE, MAP_SIZE);
 
     let minX = Infinity;
@@ -52,17 +55,19 @@ export default function Minimap({ viewport, chunks, onTeleport }: Props) {
       const x = (chunk.cx - minX) * scale;
       const y = (chunk.cy - minY) * scale;
       const size = Math.max(2, scale - 1);
-      ctx.fillStyle = chunk.zoneType === 'living' ? 'rgba(0,230,184,0.6)' : 'rgba(120,140,180,0.4)';
+      ctx.fillStyle = palette
+        .getPropertyValue(chunk.zoneType === 'living' ? '--success' : '--text-muted')
+        .trim();
       ctx.fillRect(x, y, size, size);
     }
 
     const camWorldSize = MAP_SIZE / viewport.zoom;
     const camX = (viewport.x / CHUNK_PX - minX) * scale;
     const camY = (viewport.y / CHUNK_PX - minY) * scale;
-    ctx.strokeStyle = '#00e6b8';
+    ctx.strokeStyle = palette.getPropertyValue('--accent-2').trim();
     ctx.lineWidth = 2;
     ctx.strokeRect(camX - camWorldSize / 2, camY - camWorldSize / 2, camWorldSize, camWorldSize);
-  }, [viewport, chunks]);
+  }, [viewport, chunks, theme]);
 
   const handleClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
     if (chunks.length === 0) return;

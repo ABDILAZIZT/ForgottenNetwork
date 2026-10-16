@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  brushLimit,
   canWatchRewardedAd,
   dailyCount,
   dailyReward,
@@ -36,8 +35,8 @@ describe('persisted economy', () => {
     expect(readNumber('fn_user_gems', 150)).toBe(150);
     expect(readTier()).toBe('free');
     expect(ownedItems()).toEqual([]);
-    localStorage.setItem('fn_owned_items', '["spray_brush", null, 3]');
-    expect(ownedItems()).toEqual(['spray_brush']);
+    localStorage.setItem('fn_owned_items', '["chunk_visitor_map", null, 3]');
+    expect(ownedItems()).toEqual(['chunk_visitor_map']);
     localStorage.setItem('fn_user_gems', '-12');
     expect(readNumber('fn_user_gems', 150)).toBe(150);
   });
@@ -85,14 +84,6 @@ describe('persisted economy', () => {
     expect(dailyReward('vip', 6)).toBe(200);
     expect(dailyReward('free', 7)).toBe(40);
     expect(dailyReward('vip', 13)).toBe(200);
-  });
-
-  it('expires brush boosts and preserves paid brush sizes', () => {
-    localStorage.setItem('fn_brush_boost_until', '1000');
-    expect(brushLimit('free', 999)).toBe(8);
-    expect(brushLimit('free', 1000)).toBe(4);
-    expect(brushLimit('artist', 2000)).toBe(24);
-    expect(brushLimit('vip', 2000)).toBe(24);
   });
 
   it('adds 2–5 local demo gems for each first visit to a daily neighborhood', () => {

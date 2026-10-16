@@ -6,28 +6,32 @@ import { recordDailyChallengeExplore } from '../challenges';
 import { useModal } from './useModal';
 import MarketCatalog from './MarketCatalog';
 import AdSlot from './AdSlot';
+import { useReducedMotion } from './useReducedMotion';
+import { usePageVisible } from './usePageVisible';
+import { locationUrl } from '../location';
+import { useShareLink } from './ShareNotice';
 import { translate, useLocale } from '../locale';
 
 export default function Expedition({
   x,
   y,
+  zoom,
   reducedMotion,
   onDiscover,
   onVisit,
-  onDraw,
-  onRefresh,
   hidden = false,
 }: {
   x: number;
   y: number;
+  zoom: number;
   reducedMotion: boolean;
   onDiscover: () => void;
   onVisit: (x: number, y: number) => void;
-  onDraw: () => void;
-  onRefresh: () => void;
   hidden?: boolean;
 }) {
   const locale = useLocale();
+  const visible = usePageVisible();
+  const motion = !useReducedMotion(reducedMotion) && visible && !hidden;
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState('journey');
   const [progress, setProgress] = useState(readExploration);
@@ -38,14 +42,11 @@ export default function Expedition({
   const [scanlines, setScanlines] = useState(false);
   const [effects, setEffects] = useState(false);
   const [haptics, setHaptics] = useState(false);
-  const [notice, setNotice] = useState('');
+  const { share, notice } = useShareLink();
   const [time, setTime] = useState(Date.now());
-  const [tutorial, setTutorial] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
   const aura = useRef<HTMLDivElement>(null);
   const trail = useRef<HTMLDivElement>(null);
-  const touch = useRef<number | null>(null);
-  const tutorialPixels = useRef(0);
   const modal = useModal(open && !hidden, () => setOpen(false));
   const region = `${Math.floor(x / 512)},${Math.floor(y / 512)}`;
   useEffect(() => {
@@ -64,9 +65,7 @@ export default function Expedition({
     window.addEventListener('storage', market);
     window.addEventListener('online', network);
     window.addEventListener('offline', network);
-    const timer = setInterval(() => setTime(Date.now()), 30000);
     return () => {
-      clearInterval(timer);
       window.removeEventListener('fn-exploration-change', refresh);
       window.removeEventListener('fn-market-change', market);
       window.removeEventListener('storage', refresh);
@@ -76,45 +75,56 @@ export default function Expedition({
     };
   }, []);
   useEffect(() => {
-    if (tutorial && progress.pixels > tutorialPixels.current) {
-      setTutorial(false);
-      setNotice('First mark complete! Your journey has begun.');
-      if (haptics) navigator.vibrate?.(15);
-    }
-  }, [progress.pixels, tutorial, haptics]);
+    if (!visible || hidden || (!cycle && !(open && tab === 'atmosphere'))) return;
+    setTime(Date.now());
+    const timer = setInterval(() => setTime(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, [visible, hidden, cycle, open, tab]);
   useEffect(() => {
-    document.body.dataset.cosmetics = effects ? owned.join(' ') : '';
+    document.body.dataset.cosmetics = effects && !hidden ? owned.join(' ') : '';
     return () => {
       delete document.body.dataset.cosmetics;
     };
-  }, [effects, owned]);
+  }, [effects, owned, hidden]);
   useEffect(() => {
-    if (!effects || reducedMotion) return;
-    let last = 0;
-    const move = (e: PointerEvent) => {
-      if (e.pointerType === 'touch') return;
-      if (aura.current) aura.current.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+    if (!effects || !motion || !owned.some((id) => ['neon_aura', 'particle_trail'].includes(id)))
+      return;
+    let last = 0,
+      frame = 0;
+    let position: { x: number; y: number } | null = null;
+    const container = trail.current;
+    const paint = () => {
+      frame = 0;
+      if (!position || document.hidden) return;
+      const { x, y } = position;
+      if (aura.current) aura.current.style.transform = `translate(${x}px, ${y}px)`;
       if (
         owned.includes('particle_trail') &&
-        trail.current &&
+        container &&
         performance.now() - last > 70 &&
-        trail.current.childElementCount < 16
+        container.childElementCount < 16
       ) {
         last = performance.now();
         const spark = document.createElement('i');
-        spark.style.left = e.clientX + 'px';
-        spark.style.top = e.clientY + 'px';
+        spark.style.setProperty('--trail-x', x + 'px');
+        spark.style.setProperty('--trail-y', y + 'px');
         spark.textContent = '✧';
         spark.onanimationend = () => spark.remove();
-        trail.current.append(spark);
+        container.append(spark);
       }
     };
-    window.addEventListener('pointermove', move);
+    const move = (event: PointerEvent) => {
+      if (event.pointerType === 'touch' || document.hidden) return;
+      position = { x: event.clientX, y: event.clientY };
+      if (!frame) frame = requestAnimationFrame(paint);
+    };
+    window.addEventListener('pointermove', move, { passive: true });
     return () => {
       window.removeEventListener('pointermove', move);
-      trail.current?.replaceChildren();
+      cancelAnimationFrame(frame);
+      container?.replaceChildren();
     };
-  }, [effects, owned, reducedMotion]);
+  }, [effects, owned, motion]);
   const night = new Date(time).getHours() < 7 || new Date(time).getHours() >= 19;
   const active = progress.activity.filter((entry) => time - entry.at < 120000).length;
   return (
@@ -134,44 +144,27 @@ export default function Expedition({
           {translate('expedition.offline', locale)}
         </div>
       )}
-      {!hidden && tutorial && (
-        <div className="fn-tutorial" role="status">
-          <strong>{translate('expedition.tutorialTitle', locale)}</strong>
-          <p>
-            {translate('expedition.tutorial1', locale)}
-            <br />
-            {translate('expedition.tutorial2', locale)}
-            <br />
-            {translate('expedition.tutorial3', locale)}
-          </p>
-          <button onClick={() => setTutorial(false)}>
-            {translate('expedition.dismiss', locale)}
-          </button>
+      {notice}
+      {!hidden && (weather !== 'off' || scanlines || cycle) && (
+        <div
+          aria-hidden="true"
+          className={`fn-weather ${!motion ? 'still' : ''} ${weather} ${scanlines ? 'crt' : ''} ${cycle ? (night ? 'night' : 'day') : ''}`}
+        >
+          {motion &&
+            weather !== 'off' &&
+            Array.from({ length: 28 }, (_, i) => (
+              <i
+                key={i}
+                style={{
+                  left: ((i * 37) % 100) + '%',
+                  animationDelay: -(i % 9) + 's',
+                  animationDuration: (weather === 'rain' ? 2 : 8) + (i % 4) + 's',
+                }}
+              />
+            ))}
         </div>
       )}
-      {!hidden && notice && !open && (
-        <button className="fn-expedition-notice" onClick={() => setNotice('')}>
-          {notice} · Dismiss
-        </button>
-      )}
-      <div
-        aria-hidden="true"
-        className={`fn-weather ${reducedMotion ? 'still' : ''} ${weather} ${scanlines ? 'crt' : ''} ${cycle ? (night ? 'night' : 'day') : ''}`}
-      >
-        {!reducedMotion &&
-          weather !== 'off' &&
-          Array.from({ length: 28 }, (_, i) => (
-            <i
-              key={i}
-              style={{
-                left: ((i * 37) % 100) + '%',
-                animationDelay: -(i % 9) + 's',
-                animationDuration: (weather === 'rain' ? 2 : 8) + (i % 4) + 's',
-              }}
-            />
-          ))}
-      </div>
-      {effects && !reducedMotion && (
+      {effects && motion && (
         <>
           <div
             ref={aura}
@@ -207,29 +200,14 @@ export default function Expedition({
                 </button>
               ))}
             </nav>
-            <div
-              className="fn-expedition-scroll"
-              onTouchStart={(e) => {
-                touch.current =
-                  e.currentTarget.scrollTop === 0 && e.touches.length === 1
-                    ? e.touches[0].clientY
-                    : null;
-              }}
-              onTouchEnd={(e) => {
-                if (touch.current !== null && e.changedTouches[0].clientY - touch.current > 100) {
-                  onRefresh();
-                  setNotice('Refresh requested.');
-                }
-                touch.current = null;
-              }}
-            >
+            <div className="fn-expedition-scroll">
               {tab === 'market' ? (
                 <MarketCatalog showAds={tier !== 'vip'} position={{ x, y }} />
               ) : tab === 'atmosphere' ? (
                 <section className="fn-preferences">
                   <h3>Set the atmosphere</h3>
                   <p>
-                    Network mood: {active > 4 ? 'Electric' : active ? 'Awakening' : 'Quiet'} ·{' '}
+                    Journey activity: {active > 4 ? 'Electric' : active ? 'Awakening' : 'Quiet'} ·{' '}
                     {night ? 'Night' : 'Day'}
                   </p>
                   <label>
@@ -277,11 +255,6 @@ export default function Expedition({
                     Motion follows your canvas accessibility setting. All atmosphere controls are
                     optional.
                   </p>
-                  <button
-                    onClick={() => setNotice('Secret signal found: the network remembers you. ✦')}
-                  >
-                    Tune frequency 796
-                  </button>
                 </section>
               ) : (
                 <section className="fn-journey">
@@ -308,35 +281,21 @@ export default function Expedition({
                       Discover somewhere new ↗
                     </button>
                     <button
-                      onClick={() => {
-                        tutorialPixels.current = progress.pixels;
-                        setTutorial(true);
-                        setOpen(false);
-                        onDraw();
-                      }}
-                    >
-                      Draw your first pixel
-                    </button>
-                    <button
-                      onClick={() => {
-                        const url = new URL(location.href);
-                        url.searchParams.set('x', String(Math.round(x)));
-                        url.searchParams.set('y', String(Math.round(y)));
-                        void navigator.clipboard.writeText(url.toString()).then(
-                          () => setNotice(translate('expedition.locationCopied', locale)),
-                          () => setNotice(translate('expedition.copyUnavailable', locale)),
-                        );
-                      }}
+                      onClick={() =>
+                        void share(
+                          locationUrl(
+                            location.origin,
+                            location.pathname + location.search,
+                            x,
+                            y,
+                            zoom,
+                            undefined,
+                            null,
+                          ),
+                        )
+                      }
                     >
                       {translate('expedition.shareLocation', locale)}
-                    </button>
-                    <button
-                      onClick={() => {
-                        onRefresh();
-                        setNotice('Refresh requested.');
-                      }}
-                    >
-                      Refresh activity
                     </button>
                   </div>
                   <div className="fn-achievements">
@@ -349,10 +308,7 @@ export default function Expedition({
                     )}
                   </div>
                   <h3>Signals from your journey</h3>
-                  <p>
-                    Recent local actions and live marks seen in this session. Pull down here on
-                    mobile to refresh.
-                  </p>
+                  <p>Recent local actions and live marks seen in this session.</p>
                   <div className="fn-activity">
                     {progress.activity.length ? (
                       progress.activity
@@ -382,7 +338,6 @@ export default function Expedition({
                   )}
                 </section>
               )}
-              <p role="status">{notice}</p>
             </div>
           </div>
         </div>

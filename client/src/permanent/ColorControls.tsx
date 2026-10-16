@@ -37,7 +37,7 @@ export default function ColorControls({
               width: 24,
               height: 24,
               padding: 0,
-              border: '1px solid #888',
+              border: '1px solid var(--border)',
             }}
             onClick={() => onChange(color)}
           />

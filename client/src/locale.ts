@@ -107,26 +107,7 @@ const messages = {
     en: 'Offline · live canvas unavailable. Unsent marks stay on this device.',
     ar: 'غير متصل · اللوحة المباشرة غير متاحة. تبقى العلامات غير المرسلة على هذا الجهاز.',
   },
-  'expedition.tutorialTitle': { en: 'Your first mark', ar: 'أثرك الأول' },
-  'expedition.tutorial1': {
-    en: '1. Choose your identity if asked.',
-    ar: '١. اختر هويتك إذا طُلب منك ذلك.',
-  },
-  'expedition.tutorial2': {
-    en: '2. Pick a color, then click or drag in free space.',
-    ar: '٢. اختر لونًا، ثم انقر أو اسحب في مساحة فارغة.',
-  },
-  'expedition.tutorial3': {
-    en: '3. Wait for the saved confirmation.',
-    ar: '٣. انتظر تأكيد الحفظ.',
-  },
-  'expedition.dismiss': { en: 'Dismiss tutorial', ar: 'إغلاق الإرشادات' },
   'expedition.shareLocation': { en: 'Share location', ar: 'مشاركة الموقع' },
-  'expedition.locationCopied': { en: 'Location copied.', ar: 'تم نسخ الموقع.' },
-  'expedition.copyUnavailable': {
-    en: 'Copy unavailable. Use the browser address bar.',
-    ar: 'النسخ غير متاح. استخدم شريط عنوان المتصفح.',
-  },
 } as const;
 
 export type LocaleMessage = keyof typeof messages;

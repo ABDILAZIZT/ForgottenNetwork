@@ -95,10 +95,6 @@ export function dailyReward(tier: SubscriptionTier, streak = effectiveStreak()) 
   return DAILY_REWARDS[streak % 7] * (tier === 'vip' ? 2 : 1);
 }
 
-export function brushLimit(tier: SubscriptionTier, now = Date.now()) {
-  return tier !== 'free' ? 24 : readNumber('fn_brush_boost_until') > now ? 8 : 4;
-}
-
 export interface LandClaim {
   cx: number;
   cy: number;

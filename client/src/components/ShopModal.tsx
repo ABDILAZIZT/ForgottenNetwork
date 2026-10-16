@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BadgeCheck,
   Brush,
@@ -9,12 +9,10 @@ import {
   Gift,
   Lock,
   Map,
-  Palette,
   RadioTower,
   Shield,
   ShoppingBag,
   Sparkles,
-  Upload,
   X,
   Zap,
 } from 'lucide-react';
@@ -117,24 +115,6 @@ const bundles: Array<{
 
 export const GEM_SHOP_ITEMS = [
   {
-    id: 'extra_upload_slot',
-    name: 'Extra Upload Slot',
-    cost: 50,
-    icon: <Upload size={22} />,
-    description: 'Adds +3 media uploads for today.',
-    effect: 'Updates your daily upload allowance immediately for this browser.',
-    repeatable: true,
-  },
-  {
-    id: 'brush_size_boost',
-    name: 'Brush Size Boost',
-    cost: 75,
-    icon: <Zap size={22} />,
-    description: 'Temporarily unlocks brushes up to 8px for one hour.',
-    effect: 'Free members can paint larger strokes until the timer expires.',
-    repeatable: true,
-  },
-  {
     id: 'chunk_visitor_map',
     name: 'Chunk Density Map',
     cost: 100,
@@ -151,30 +131,6 @@ export const GEM_SHOP_ITEMS = [
     description: 'Creates a named world bookmark others can visit.',
     effect: 'Saves your current location. Rename, visit, or share it from World unlocks.',
     repeatable: true,
-  },
-  {
-    id: 'palette_neon_noir',
-    name: 'Palette Unlock: Neon Noir',
-    cost: 120,
-    icon: <Palette size={22} />,
-    description: 'Permanently unlocks a 16-color neon palette.',
-    effect: 'Select Neon Noir in the drawing color palette.',
-  },
-  {
-    id: 'palette_fossil',
-    name: 'Palette Unlock: Fossil',
-    cost: 120,
-    icon: <Palette size={22} />,
-    description: 'Permanently unlocks earthy fossil-tone colors.',
-    effect: 'Select Fossil in the drawing color palette.',
-  },
-  {
-    id: 'spray_brush',
-    name: 'Spray Brush',
-    cost: 200,
-    icon: <Sparkles size={22} />,
-    description: 'Unlocks the spray brush tool permanently for Tier 1 users.',
-    effect: 'Select Spray in Brush style to paint scattered pixels.',
   },
   {
     id: 'land_license',
@@ -205,6 +161,11 @@ export default function ShopModal({
   const [activeTab, setActiveTab] = useState<ShopTab>(initialTab);
   const [collection, setCollection] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => {
+    setNotice(null);
+    return () => clearTimeout(noticeTimer.current);
+  }, [isOpen]);
   const modalRef = useModal(isOpen, onClose);
 
   useEffect(() => {
@@ -223,7 +184,8 @@ export default function ShopModal({
 
   const notify = (message: string) => {
     setNotice(message);
-    window.setTimeout(() => setNotice(null), 3200);
+    clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => setNotice(null), 3200);
   };
 
   const buyBundle = (amount: number, label: string) => {
@@ -489,7 +451,7 @@ export default function ShopModal({
                 <div>
                   <strong>7-day milestone</strong>
                   <span>
-                    {streakCount ? ((streakCount - 1) % 7) + 1 : 0} / 7 toward Neon Noir +{' '}
+                    {streakCount ? ((streakCount - 1) % 7) + 1 : 0} / 7 toward{' '}
                     {subscriptionTier === 'vip' ? 200 : 100} gems
                   </span>
                 </div>
@@ -527,8 +489,7 @@ export default function ShopModal({
         .fn-shop-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(5, 5, 12, 0.86);
-          backdrop-filter: blur(9px);
+          background: color-mix(in srgb, var(--surface) 86%, transparent);
           z-index: 1000;
           display: flex;
           align-items: center;
@@ -539,23 +500,23 @@ export default function ShopModal({
         }
         .fn-shop-modal {
           position: relative;
-          background: #0d0e17;
-          border: 1px solid rgba(0,230,184,0.3);
-          box-shadow: 0 0 35px rgba(0,230,184,0.15), 0 20px 50px rgba(0,0,0,0.8);
+          background: var(--surface);
+          border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
+          box-shadow: 0 0 35px color-mix(in srgb, var(--success) 15%, transparent), 0 20px 50px color-mix(in srgb, var(--shadow-color) 80%, transparent);
           border-radius: 8px;
           width: min(1120px, 100%);
           max-height: 92vh;
           display: flex;
           flex-direction: column;
           overflow: hidden;
-          color: #e2e8f0;
+          color: var(--text);
           animation: fn-modal-enter 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         .fn-shop-aurora {
           position: absolute;
           inset: 0;
           pointer-events: none;
-          background: linear-gradient(120deg, rgba(0,230,184,0.12), rgba(51,136,255,0.06), rgba(255,68,204,0.1), rgba(255,170,0,0.07));
+          background: linear-gradient(120deg, color-mix(in srgb, var(--success) 12%, transparent), color-mix(in srgb, var(--accent-2) 6%, transparent), color-mix(in srgb, var(--danger) 10%, transparent), color-mix(in srgb, var(--warning) 7%, transparent));
           background-size: 300% 300%;
           animation: shop-aurora 12s ease-in-out infinite;
           opacity: 0.75;
@@ -567,36 +528,36 @@ export default function ShopModal({
           justify-content: space-between;
           gap: 16px;
           padding: 18px 24px;
-          background: rgba(255,255,255,0.03);
-          border-bottom: 1px solid rgba(255,255,255,0.08);
+          background: color-mix(in srgb, var(--surface-tint) 3%, transparent);
+          border-bottom: 1px solid color-mix(in srgb, var(--border) 8%, transparent);
         }
         .fn-shop-title { display: flex; align-items: center; gap: 14px; }
-        .icon-shop { color: #00e6b8; filter: drop-shadow(0 0 8px rgba(0,230,184,0.5)); }
-        .fn-shop-title h3 { margin: 0; font-size: 1.35rem; color: #e2e8f0; font-weight: 900; }
-        .fn-shop-title p { margin: 3px 0 0; color: #94a3b8; font-size: 0.82rem; max-width: 680px; }
+        .icon-shop { color: var(--success); filter: drop-shadow(0 0 8px color-mix(in srgb, var(--success) 50%, transparent)); }
+        .fn-shop-title h3 { margin: 0; font-size: 1.35rem; color: var(--text); font-weight: 900; }
+        .fn-shop-title p { margin: 3px 0 0; color: var(--text-muted); font-size: 0.82rem; max-width: 680px; }
         .fn-close-btn {
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.08);
-          color: #94a3b8;
+          background: color-mix(in srgb, var(--surface-tint) 3%, transparent);
+          border: 1px solid color-mix(in srgb, var(--border) 8%, transparent);
+          color: var(--text-muted);
           cursor: pointer;
           padding: 7px;
           border-radius: 6px;
         }
-        .fn-close-btn:hover { color: #ff4466; border-color: rgba(255,68,102,0.4); }
+        .fn-close-btn:hover { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
         .fn-balance-bar {
           display: flex;
           flex-wrap: wrap;
           gap: 14px;
           padding: 12px 24px;
-          background: rgba(0,230,184,0.05);
-          border-bottom: 1px solid rgba(0,230,184,0.15);
+          background: color-mix(in srgb, var(--success) 5%, transparent);
+          border-bottom: 1px solid color-mix(in srgb, var(--success) 15%, transparent);
         }
-        .fn-balance-item { display: inline-flex; align-items: center; gap: 8px; color: #94a3b8; }
-        .fn-balance-item strong, .icon-gems { color: #00e6b8; }
+        .fn-balance-item { display: inline-flex; align-items: center; gap: 8px; color: var(--text-muted); }
+        .fn-balance-item strong, .icon-gems { color: var(--success); }
         .fn-notice-banner {
-          background: rgba(68,255,136,0.12);
-          border-bottom: 1px solid rgba(68,255,136,0.3);
-          color: #44ff88;
+          background: color-mix(in srgb, var(--success) 12%, transparent);
+          border-bottom: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
+          color: var(--success);
           padding: 10px 24px;
           display: flex;
           align-items: center;
@@ -607,14 +568,14 @@ export default function ShopModal({
           display: flex;
           gap: 8px;
           padding: 12px 24px 0;
-          border-bottom: 1px solid rgba(255,255,255,0.08);
+          border-bottom: 1px solid color-mix(in srgb, var(--border) 8%, transparent);
           overflow-x: auto;
         }
         .tab-btn {
           background: transparent;
           border: 0;
           border-bottom: 2px solid transparent;
-          color: #94a3b8;
+          color: var(--text-muted);
           padding: 10px 14px;
           font-weight: 800;
           cursor: pointer;
@@ -623,25 +584,17 @@ export default function ShopModal({
           gap: 8px;
           white-space: nowrap;
         }
-        .tab-btn:hover, .tab-btn.active { color: #00e6b8; }
-        .tab-btn.active { border-bottom-color: #00e6b8; }
+        .tab-btn:hover, .tab-btn.active { color: var(--success); }
+        .tab-btn.active { border-bottom-color: var(--success); }
         .fn-shop-content { padding: 24px; overflow-y: auto; flex: 1; }
-        .billing-toggle {
-          display: inline-flex;
-          gap: 10px;
-          align-items: center;
-          margin-bottom: 18px;
-          color: #ffaa00;
-          font-weight: 800;
-        }
         .fn-tier-grid, .fn-cards-grid, .fn-items-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
           gap: 16px;
         }
         .fn-shop-card, .item-box, .reward-stat, .streak-progress, .transaction-list {
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.08);
+          background: color-mix(in srgb, var(--surface-tint) 3%, transparent);
+          border: 1px solid color-mix(in srgb, var(--border) 8%, transparent);
           border-radius: 8px;
         }
         .fn-shop-card {
@@ -657,12 +610,12 @@ export default function ShopModal({
         }
         .fn-shop-card:hover {
           transform: perspective(700px) rotateX(2deg) rotateY(-3deg) translateY(-4px);
-          border-color: rgba(0,230,184,0.38);
-          box-shadow: 0 14px 30px rgba(0,0,0,0.32);
+          border-color: color-mix(in srgb, var(--success) 38%, transparent);
+          box-shadow: 0 14px 30px color-mix(in srgb, var(--shadow-color) 32%, transparent);
         }
-        .tier-card.artist { border-color: rgba(0,230,184,0.35); }
+        .tier-card.artist { border-color: color-mix(in srgb, var(--success) 35%, transparent); }
         .tier-card.vip {
-          border-color: rgba(255,170,0,0.4);
+          border-color: color-mix(in srgb, var(--warning) 40%, transparent);
           overflow: hidden;
         }
         .tier-card.vip::before {
@@ -670,39 +623,39 @@ export default function ShopModal({
           content: '';
           position: absolute;
           inset: -40%;
-          background-image: radial-gradient(circle, rgba(255,170,0,0.35) 0 1px, transparent 2px);
+          background-image: radial-gradient(circle, color-mix(in srgb, var(--warning) 35%, transparent) 0 1px, transparent 2px);
           background-size: 22px 22px;
           animation: shimmer-drift 9s linear infinite;
           opacity: 0.55;
         }
-        .card-icon { color: #00e6b8; margin: 8px 0; position: relative; }
-        .tier-card.vip .card-icon, .bundle-gem { color: #ffaa00; }
-        .fn-shop-card h4, .item-box h4, .transaction-list h4 { margin: 6px 0; color: #e2e8f0; font-size: 1.05rem; }
-        .tier-price, .gem-amount { color: #00e6b8; font-size: 1.32rem; font-weight: 900; }
-        .fn-shop-card p, .item-box p, .item-box small { color: #94a3b8; font-size: 0.8rem; line-height: 1.45; }
+        .card-icon { color: var(--success); margin: 8px 0; position: relative; }
+        .tier-card.vip .card-icon, .bundle-gem { color: var(--warning); }
+        .fn-shop-card h4, .item-box h4, .transaction-list h4 { margin: 6px 0; color: var(--text); font-size: 1.05rem; }
+        .tier-price, .gem-amount { color: var(--success); font-size: 1.32rem; font-weight: 900; }
+        .fn-shop-card p, .item-box p, .item-box small { color: var(--text-muted); font-size: 0.8rem; line-height: 1.45; }
         .fn-shop-card ul { list-style: none; padding: 0; margin: 12px 0 16px; width: 100%; text-align: left; }
-        .fn-shop-card li { display: flex; gap: 8px; align-items: center; margin: 7px 0; color: #cbd5e1; font-size: 0.78rem; }
-        .fn-shop-card li svg { color: #44ff88; flex: 0 0 auto; }
+        .fn-shop-card li { display: flex; gap: 8px; align-items: center; margin: 7px 0; color: var(--text); font-size: 0.78rem; }
+        .fn-shop-card li svg { color: var(--success); flex: 0 0 auto; }
         .card-badge {
           position: absolute;
           top: 6px;
           z-index: 2;
-          background: #3388ff;
-          color: #fff;
+          background: var(--accent-fill);
+          color: var(--text);
           font-size: 0.68rem;
           font-weight: 900;
           padding: 3px 10px;
           border-radius: 999px;
-          border: 1px solid rgba(255,255,255,0.25);
+          border: 1px solid color-mix(in srgb, var(--border) 25%, transparent);
         }
-        .card-badge.hot { background: #ff44cc; }
-        .card-badge.gold { background: #ffaa00; color: #0d0e17; }
+        .card-badge.hot { background: var(--accent-fill); }
+        .card-badge.gold { background: var(--accent-fill); color: var(--on-accent); }
         .card-badge.pulse { animation: badge-pulse 1.8s ease-in-out infinite; }
         .buy-btn, .buy-btn-sm {
           width: 100%;
           margin-top: auto;
-          background: #00e6b8;
-          color: #03110e;
+          background: var(--accent-fill);
+          color: var(--on-accent);
           border: 0;
           padding: 10px;
           border-radius: 6px;
@@ -711,35 +664,35 @@ export default function ShopModal({
         }
         .buy-btn:hover:not(:disabled), .buy-btn-sm:hover:not(:disabled) { filter: brightness(1.12); }
         .buy-btn:disabled, .buy-btn-sm:disabled {
-          background: rgba(255,255,255,0.08);
-          color: #64748b;
+          background: color-mix(in srgb, var(--surface-tint) 8%, transparent);
+          color: var(--text-muted);
           cursor: not-allowed;
         }
         .feature-table {
           width: 100%;
           margin-top: 18px;
           border-collapse: collapse;
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.08);
+          background: color-mix(in srgb, var(--surface-tint) 3%, transparent);
+          border: 1px solid color-mix(in srgb, var(--border) 8%, transparent);
           border-radius: 8px;
           overflow: hidden;
         }
         .feature-table th, .feature-table td {
           padding: 10px;
-          border-bottom: 1px solid rgba(255,255,255,0.08);
-          color: #cbd5e1;
+          border-bottom: 1px solid color-mix(in srgb, var(--border) 8%, transparent);
+          color: var(--text);
           font-size: 0.78rem;
           text-align: left;
         }
-        .feature-table th { color: #00e6b8; background: rgba(0,230,184,0.06); }
+        .feature-table th { color: var(--success); background: color-mix(in srgb, var(--success) 6%, transparent); }
         .bundle-card.locked { opacity: 0.55; }
-        .lock-mark { position: absolute; right: 14px; top: 14px; color: #ffaa00; }
+        .lock-mark { position: absolute; right: 14px; top: 14px; color: var(--warning); }
         .item-box { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
-        .item-icon { color: #00e6b8; }
+        .item-icon { color: var(--success); }
         .item-title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
         .owned-badge {
-          color: #04130a;
-          background: #44ff88;
+          color: var(--on-accent);
+          background: var(--accent-fill);
           border-radius: 999px;
           padding: 2px 8px;
           font-size: 0.67rem;
@@ -750,37 +703,34 @@ export default function ShopModal({
           grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
           gap: 14px;
         }
-        .reward-stat { padding: 18px; display: flex; flex-direction: column; gap: 6px; color: #00e6b8; }
-        .reward-stat span { color: #e2e8f0; font-size: 1.45rem; font-weight: 900; }
-        .reward-stat small, .streak-progress span, .transaction-list p { color: #94a3b8; }
-        .hero-stat { border-color: rgba(0,230,184,0.3); }
+        .reward-stat { padding: 18px; display: flex; flex-direction: column; gap: 6px; color: var(--success); }
+        .reward-stat span { color: var(--text); font-size: 1.45rem; font-weight: 900; }
+        .reward-stat small, .streak-progress span, .transaction-list p { color: var(--text-muted); }
+        .hero-stat { border-color: color-mix(in srgb, var(--success) 30%, transparent); }
         .streak-progress, .transaction-list { padding: 16px; grid-column: 1 / -1; }
         .streak-progress > div:first-child { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-        .progress-track { height: 9px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; }
-        .progress-track div { height: 100%; background: linear-gradient(90deg, #00e6b8, #ffaa00); }
+        .progress-track { height: 9px; background: color-mix(in srgb, var(--surface-tint) 8%, transparent); border-radius: 999px; overflow: hidden; }
+        .progress-track div { height: 100%; background: linear-gradient(90deg, var(--accent-fill), var(--accent-fill)); }
         .transaction-list p { margin: 8px 0 0; font-size: 0.82rem; }
         .fn-shop-footer {
           padding: 12px 24px;
-          background: rgba(0,0,0,0.38);
-          border-top: 1px solid rgba(255,255,255,0.08);
+          background: color-mix(in srgb, var(--surface-tint) 38%, transparent);
+          border-top: 1px solid color-mix(in srgb, var(--border) 8%, transparent);
         }
-        .fn-shop-footer p { margin: 3px 0; color: #64748b; font-size: 0.74rem; text-align: center; }
+        .fn-shop-footer p { margin: 3px 0; color: var(--text-muted); font-size: 0.74rem; text-align: center; }
         @keyframes fn-modal-enter {
           from { opacity: 0; transform: scale(0.92) translateY(20px); }
           to { opacity: 1; transform: scale(1) translateY(0); }
         }
         @keyframes shop-aurora {
-          0%, 100% { background-position: 0% 50%; filter: hue-rotate(0deg); }
-          50% { background-position: 100% 50%; filter: hue-rotate(25deg); }
+          0%, 100% { opacity: .5; transform: translateX(-2%); }
+          50% { opacity: .8; transform: translateX(2%); }
         }
         @keyframes shimmer-drift {
           from { transform: translate3d(-20px, -20px, 0); }
           to { transform: translate3d(20px, 20px, 0); }
         }
-        @keyframes badge-pulse {
-          0%, 100% { box-shadow: 0 0 0 rgba(255,170,0,0); }
-          50% { box-shadow: 0 0 18px rgba(255,170,0,0.55); }
-        }
+        @keyframes badge-pulse { 50% { opacity: .75; transform: translateY(-1px); } }
         @media (max-width: 720px) {
           .fn-shop-modal { max-height: 96vh; }
           .feature-table { min-width: 620px; }

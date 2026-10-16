@@ -1,5 +1,5 @@
 import { Camera } from '../engine/Camera';
-import { drawArt, loadArt } from './art';
+import { clearArtCache, drawArt, loadArt } from './art';
 import { availablePlacementCells, placementCells } from './geometry';
 import type { LandClaim } from '../economy';
 import type { Artwork, Blocked, Content, Peer, Placement, Point, Tool, View } from './types';
@@ -97,6 +97,14 @@ export class PermanentEngine {
   private occupied = new Map<string, Artwork>();
   private pointers = new Map<number, Point>();
   private drawing: Point[] = [];
+  private palette = {
+    background: '#11121d',
+    grid: '#ffffff18',
+    text: '#c4b5df',
+    accent: '#22d3ee',
+    cursor: '#ffffff',
+    vision: '#1c2330',
+  };
   private start: Point | null = null;
   private preview: Placement | null = null;
   private cursor: Point = [0, 0];
@@ -175,11 +183,22 @@ export class PermanentEngine {
         this.pointers.clear();
         this.drawing = [];
         this.start = null;
+        this.preview = null;
         this.panning = false;
+        this.hooks.preview(null);
       },
       { signal },
     );
-    this.frame = requestAnimationFrame(this.render);
+    document.addEventListener(
+      'visibilitychange',
+      () => {
+        cancelAnimationFrame(this.frame);
+        this.frame = 0;
+        if (!document.hidden) this.frame = requestAnimationFrame(this.render);
+      },
+      { signal },
+    );
+    if (!document.hidden) this.frame = requestAnimationFrame(this.render);
   }
   destroy() {
     cancelAnimationFrame(this.frame);
@@ -187,6 +206,18 @@ export class PermanentEngine {
     this.observer.disconnect();
   }
   configure(settings: Settings) {
+    if (this.settings.theme !== settings.theme) {
+      clearArtCache();
+      const style = getComputedStyle(document.documentElement);
+      this.palette = {
+        background: style.getPropertyValue('--canvas-bg').trim(),
+        grid: style.getPropertyValue('--canvas-grid').trim(),
+        text: style.getPropertyValue('--text-muted').trim(),
+        accent: style.getPropertyValue('--accent-2').trim(),
+        cursor: style.getPropertyValue('--text').trim(),
+        vision: style.getPropertyValue('--canvas-vision').trim(),
+      };
+    }
     this.settings = settings;
     this.camera.reducedMotion = settings.reducedMotion;
     if (!this.start) this.preview = null;
@@ -422,11 +453,58 @@ export class PermanentEngine {
     this.drawing = [];
     this.start = null;
   }
+  private position(event: PointerEvent): Point {
+    const rect = this.canvas.getBoundingClientRect();
+    return [event.clientX - rect.left, event.clientY - rect.top];
+  }
+  private appendStroke(point: Point, final = false) {
+    const previous = this.drawing[this.drawing.length - 1];
+    const distance = Math.hypot(point[0] - previous[0], point[1] - previous[1]);
+    if (!distance) return;
+    // Limit smoothing lag in world pixels, so a fast sample cannot leave the pen behind.
+    const smoothing = this.settings.tool === 'brush' && !final ? this.settings.smoothing || 0 : 0;
+    const blend = Math.max(1 - smoothing * 0.85, 1 - Math.min(8, this.settings.size) / distance);
+    const target: Point = [
+      previous[0] + (point[0] - previous[0]) * blend,
+      previous[1] + (point[1] - previous[1]) * blend,
+    ];
+    const steps = Math.max(1, Math.ceil((distance * blend) / 2));
+    const span = 512 - 2 * Math.ceil(this.settings.size / 2 + 2);
+    let minX = Math.min(...this.drawing.map((p) => p[0])),
+      maxX = Math.max(...this.drawing.map((p) => p[0]));
+    let minY = Math.min(...this.drawing.map((p) => p[1])),
+      maxY = Math.max(...this.drawing.map((p) => p[1]));
+    for (let i = 1; i <= steps; i++) {
+      const next: Point = [
+        previous[0] + ((target[0] - previous[0]) * i) / steps,
+        previous[1] + ((target[1] - previous[1]) * i) / steps,
+      ];
+      if (
+        this.drawing.length >= 1200 ||
+        Math.max(maxX, next[0]) - Math.min(minX, next[0]) > span ||
+        Math.max(maxY, next[1]) - Math.min(minY, next[1]) > span
+      ) {
+        const join = this.drawing[this.drawing.length - 1];
+        this.preview = this.make(this.drawing);
+        this.finish();
+        this.start = join;
+        this.drawing = [join];
+        minX = maxX = join[0];
+        minY = maxY = join[1];
+      }
+      this.drawing.push(next);
+      minX = Math.min(minX, next[0]);
+      maxX = Math.max(maxX, next[0]);
+      minY = Math.min(minY, next[1]);
+      maxY = Math.max(maxY, next[1]);
+    }
+  }
   private down = (e: PointerEvent) => {
     e.preventDefault();
     this.canvas.setPointerCapture(e.pointerId);
-    this.pointers.set(e.pointerId, [e.offsetX, e.offsetY]);
-    this.lastPointer = [e.offsetX, e.offsetY];
+    const pos = this.position(e);
+    this.pointers.set(e.pointerId, pos);
+    this.lastPointer = pos;
     this.moved = false;
     if (this.pointers.size === 2) {
       this.preview = null;
@@ -440,8 +518,8 @@ export class PermanentEngine {
     if (this.panning) return;
     if (this.settings.tool === 'eyedropper') {
       const rgba = this.ctx.getImageData(
-        Math.max(0, Math.min(this.canvas.width - 1, Math.floor(e.offsetX * this.dpr))),
-        Math.max(0, Math.min(this.canvas.height - 1, Math.floor(e.offsetY * this.dpr))),
+        Math.max(0, Math.min(this.canvas.width - 1, Math.floor(pos[0] * this.dpr))),
+        Math.max(0, Math.min(this.canvas.height - 1, Math.floor(pos[1] * this.dpr))),
         1,
         1,
       ).data;
@@ -457,7 +535,7 @@ export class PermanentEngine {
       this.hooks.signIn();
       return;
     }
-    const point = this.world(e.offsetX, e.offsetY);
+    const point = this.world(...pos);
     if (this.settings.tool === 'eraser') {
       const draftCount = this.draftList.length;
       this.erase(point);
@@ -485,7 +563,7 @@ export class PermanentEngine {
     this.hooks.drafts(this.draftList.length);
   }
   private move = (e: PointerEvent) => {
-    const pos: Point = [e.offsetX, e.offsetY],
+    const pos = this.position(e),
       point = this.world(...pos);
     this.cursor = pos;
     if (this.pointers.has(e.pointerId)) this.pointers.set(e.pointerId, pos);
@@ -503,6 +581,7 @@ export class PermanentEngine {
       this.pinch = distance;
       return;
     }
+    if (this.pointers.size && !this.pointers.has(e.pointerId)) return;
     if (this.pointers.size && this.panning) {
       this.camera.applyDrag(pos[0] - this.lastPointer[0], pos[1] - this.lastPointer[1]);
       this.moved = true;
@@ -510,28 +589,9 @@ export class PermanentEngine {
     else if (this.start) {
       this.moved = true;
       if (['brush', 'pixel'].includes(this.settings.tool)) {
-        const last = this.drawing[this.drawing.length - 1];
-        if (Math.hypot(point[0] - last[0], point[1] - last[1]) >= 1) {
-          const xs = this.drawing.map((p) => p[0]),
-            ys = this.drawing.map((p) => p[1]);
-          const span = 508 - this.settings.size;
-          if (
-            this.drawing.length >= 1200 ||
-            Math.max(...xs, point[0]) - Math.min(...xs, point[0]) > span ||
-            Math.max(...ys, point[1]) - Math.min(...ys, point[1]) > span
-          ) {
-            this.finish();
-            this.start = point;
-            this.drawing = [point];
-          } else {
-            const blend =
-              this.settings.tool === 'brush' ? 1 - (this.settings.smoothing || 0) * 0.85 : 1;
-            this.drawing.push([
-              last[0] + (point[0] - last[0]) * blend,
-              last[1] + (point[1] - last[1]) * blend,
-            ]);
-          }
-        }
+        const samples = e.getCoalescedEvents?.() || [];
+        for (const sample of samples) this.appendStroke(this.world(...this.position(sample)));
+        this.appendStroke(point);
       } else this.drawing = [this.start, point];
       this.preview = this.make(this.drawing);
     } else if (
@@ -548,7 +608,12 @@ export class PermanentEngine {
     }
   };
   private up = (event: PointerEvent) => {
+    if (!this.pointers.has(event.pointerId)) return;
+    const pos = this.position(event);
+    this.lastPointer = pos;
     const wasMulti = this.pointers.size > 1;
+    if (this.canvas.hasPointerCapture(event.pointerId))
+      this.canvas.releasePointerCapture(event.pointerId);
     this.pointers.delete(event.pointerId);
     this.pinch = 0;
     if (wasMulti) {
@@ -556,14 +621,22 @@ export class PermanentEngine {
       this.panning = true;
       return;
     }
-    if (this.start) this.finish();
-    else if (this.panning && !this.moved) {
-      const p = this.world(event.offsetX, event.offsetY),
+    if (this.start) {
+      const point = this.world(...pos);
+      if (['brush', 'pixel'].includes(this.settings.tool)) {
+        for (const sample of event.getCoalescedEvents?.() || [])
+          this.appendStroke(this.world(...this.position(sample)));
+        this.appendStroke(point, true);
+      } else this.drawing = [this.start, point];
+      this.preview = this.make(this.drawing);
+      this.finish();
+    } else if (this.panning && !this.moved) {
+      const p = this.world(...pos),
         e = this.occupied.get(Math.floor(p[0] / 8) + ',' + Math.floor(p[1] / 8));
       if (e) this.hooks.select(e);
     }
     this.panning = false;
-    this.hooks.cursor(this.world(event.offsetX, event.offsetY), false);
+    this.hooks.cursor(this.world(...pos), false);
   };
   private cancel = (event: PointerEvent) => {
     this.pointers.delete(event.pointerId);
@@ -571,6 +644,8 @@ export class PermanentEngine {
     this.preview = null;
     this.drawing = [];
     this.panning = false;
+    this.hooks.preview(null);
+    this.broadcasting = false;
   };
   private drawProtected(ctx: CanvasRenderingContext2D, e: Placement, t: number) {
     let cells = this.placementCellCache.get(e);
@@ -588,6 +663,8 @@ export class PermanentEngine {
     ctx.restore();
   }
   private render = (time: number) => {
+    this.frame = 0;
+    if (document.hidden) return;
     this.camera.update();
     const ctx = this.ctx,
       w = this.width,
@@ -597,7 +674,9 @@ export class PermanentEngine {
       this.camera.teleportTo(-180 + Math.sin(t * 0.05) * 35, Math.cos(t * 0.04) * 20);
     if (this.camera.zoom < Math.max(w, h) / 7168) this.camera.setZoom(Math.max(w, h) / 7168);
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    ctx.fillStyle = this.settings.theme === 'light' ? '#eee9e1' : '#11121d';
+    ctx.fillStyle = document.body.dataset.cosmetics?.split(' ').includes('night_vision')
+      ? this.palette.vision
+      : this.palette.background;
     ctx.fillRect(0, 0, w, h);
     for (let i = 0; i < 95; i++) {
       const x = (((i * 173.71 - this.camera.x * 0.08) % w) + w) % w,
@@ -610,12 +689,7 @@ export class PermanentEngine {
     ctx.scale(this.camera.zoom, this.camera.zoom);
     ctx.translate(-this.camera.x, -this.camera.y);
     const v = this.getView();
-    ctx.strokeStyle =
-      this.settings.grid === false
-        ? 'transparent'
-        : this.settings.theme === 'light'
-          ? '#40325318'
-          : '#ffffff0d';
+    ctx.strokeStyle = this.settings.grid === false ? 'transparent' : this.palette.grid;
     ctx.lineWidth = 1 / this.camera.zoom;
     ctx.beginPath();
     for (let x = Math.floor(v.x / 64) * 64; x < v.x + v.width; x += 64) {
@@ -628,7 +702,7 @@ export class PermanentEngine {
     }
     ctx.stroke();
     if (this.settings.rulers) {
-      ctx.fillStyle = this.settings.theme === 'light' ? '#594873' : '#c4b5df';
+      ctx.fillStyle = this.palette.text;
       ctx.font = `${12 / this.camera.zoom}px system-ui`;
       const interval = Math.max(64, 64 * Math.ceil(1 / this.camera.zoom));
       for (let x = Math.ceil(v.x / interval) * interval; x < v.x + v.width; x += interval)
@@ -705,7 +779,7 @@ export class PermanentEngine {
     }
     if (this.settings.tool === 'export' && this.start) {
       const p = this.world(...this.lastPointer);
-      ctx.strokeStyle = '#22d3ee';
+      ctx.strokeStyle = this.palette.accent;
       ctx.strokeRect(this.start[0], this.start[1], p[0] - this.start[0], p[1] - this.start[1]);
     }
     if (time - this.blockedAt < 1100) {
@@ -730,7 +804,11 @@ export class PermanentEngine {
       const text = p.name + (p.drawing ? ' · drawing' : '');
       const width = ctx.measureText(text).width;
       ctx.fillRect(14, 15, width + 12, 22);
-      ctx.fillStyle = '#0a0a0f';
+      const rgb = [1, 3, 5]
+        .map((i) => parseInt(p.color.slice(i, i + 2), 16) / 255)
+        .map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+      const luminance = rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+      ctx.fillStyle = luminance > 0.179 ? '#000000' : '#ffffff';
       ctx.fillText(text, 20, 30);
       ctx.restore();
     }
@@ -748,8 +826,8 @@ export class PermanentEngine {
       }
     ctx.restore();
     if (['brush', 'pixel', 'eraser'].includes(this.settings.tool)) {
-      ctx.strokeStyle = this.settings.color;
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = this.palette.cursor;
+      ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(
         this.cursor[0],
@@ -758,6 +836,9 @@ export class PermanentEngine {
         0,
         Math.PI * 2,
       );
+      ctx.stroke();
+      ctx.strokeStyle = this.settings.color;
+      ctx.lineWidth = 1;
       ctx.stroke();
     }
     if (this.settings.tool === 'eyedropper') {
@@ -785,13 +866,16 @@ export class PermanentEngine {
     if (time - this.lastView > 180) {
       this.lastView = time;
       const key = [
-        Math.round(v.x / 128),
-        Math.round(v.y / 128),
-        Math.round(v.width / 128),
-        Math.round(v.height / 128),
+        v.x.toFixed(2),
+        v.y.toFixed(2),
+        v.width.toFixed(2),
+        v.height.toFixed(2),
+        v.zoom,
       ].join(':');
-      this.hooks.view(v);
-      if (key !== this.viewKey) this.viewKey = key;
+      if (key !== this.viewKey) {
+        this.viewKey = key;
+        this.hooks.view(v);
+      }
     }
     this.canvas.dataset.elements = String(visible.length);
     this.canvas.dataset.liveDrafts = String(this.remoteDrafts.size);
@@ -818,7 +902,7 @@ export class PermanentEngine {
     canvas.width = Math.max(1, Math.ceil(view.width * scale));
     canvas.height = Math.max(1, Math.ceil(view.height * scale));
     const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#0a0a0f';
+    ctx.fillStyle = this.palette.background;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.scale(scale, scale);
     ctx.translate(-view.x, -view.y);

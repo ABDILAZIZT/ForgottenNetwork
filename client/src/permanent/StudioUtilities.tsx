@@ -175,18 +175,6 @@ export default function StudioUtilities({
           },
         ]),
       );
-    if (id === 'extra_upload_slot') {
-      localStorage.setItem(
-        'fn_upload_bonus_today',
-        String(dailyCount('fn_upload_bonus_today', 'fn_upload_bonus_date') + 3),
-      );
-      localStorage.setItem('fn_upload_bonus_date', todayKey());
-    }
-    if (id === 'brush_size_boost')
-      localStorage.setItem(
-        'fn_brush_boost_until',
-        String(Math.max(Date.now(), readNumber('fn_brush_boost_until')) + 3600000),
-      );
     if (!item.repeatable)
       localStorage.setItem('fn_owned_items', JSON.stringify([...ownedItems(), id]));
     award(-cost);
@@ -200,11 +188,6 @@ export default function StudioUtilities({
     const amount = dailyReward(readTier(), streak);
     localStorage.setItem('fn_last_reward_date', todayKey());
     localStorage.setItem('fn_streak_count', String(streak + 1));
-    if ((streak + 1) % 7 === 0)
-      localStorage.setItem(
-        'fn_owned_items',
-        JSON.stringify([...new Set([...ownedItems(), 'palette_neon_noir'])]),
-      );
     award(amount);
   };
   return (

@@ -3,6 +3,7 @@ import type { EntityState } from '../engine/Entity';
 import type { SessionUser } from '../auth';
 import { useWorldRepository } from '../repositories';
 import { locationUrl } from '../location';
+import { useShareLink } from './ShareNotice';
 import AdSlot from './AdSlot';
 import { readTier } from '../economy';
 
@@ -58,6 +59,7 @@ export default function CommunityPanel({
   onClose: () => void;
   onVisit: (x: number, y: number) => void;
 }) {
+  const { share, notice } = useShareLink();
   const repository = useWorldRepository();
   const panelRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -144,6 +146,7 @@ export default function CommunityPanel({
       role="dialog"
       aria-label="Community and contributions"
     >
+      {notice}
       <div className="fn-community-heading">
         <h2>World & community</h2>
         <button onClick={onClose} aria-label="Close community panel">
@@ -188,19 +191,15 @@ export default function CommunityPanel({
           <button onClick={() => onVisit(selected.wx, selected.wy)}>Visit</button>{' '}
           <button
             onClick={() =>
-              void perform(
-                () =>
-                  navigator.clipboard.writeText(
-                    locationUrl(
-                      window.location.origin,
-                      window.location.pathname,
-                      selected.wx,
-                      selected.wy,
-                      1.5,
-                      selected.id,
-                    ),
-                  ),
-                'Contribution link copied',
+              void share(
+                locationUrl(
+                  location.origin,
+                  location.pathname,
+                  selected.wx,
+                  selected.wy,
+                  1.5,
+                  selected.id,
+                ),
               )
             }
           >

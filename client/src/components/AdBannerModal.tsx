@@ -249,8 +249,7 @@ export default function AdBannerModal({
         .fn-ad-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(5,5,12,0.85);
-          backdrop-filter: blur(8px);
+          background: color-mix(in srgb, var(--surface) 85%, transparent);
           z-index: 1000;
           display: flex;
           align-items: center;
@@ -263,11 +262,11 @@ export default function AdBannerModal({
           position: relative;
           width: min(500px, 100%);
           padding: 24px;
-          background: #0d0e17;
-          border: 1px solid rgba(51,136,255,0.3);
+          background: var(--surface);
+          border: 1px solid color-mix(in srgb, var(--accent-2) 30%, transparent);
           border-radius: 8px;
-          box-shadow: 0 0 35px rgba(51,136,255,0.15), 0 20px 50px rgba(0,0,0,0.8);
-          color: #e2e8f0;
+          box-shadow: 0 0 35px color-mix(in srgb, var(--accent-2) 15%, transparent), 0 20px 50px color-mix(in srgb, var(--shadow-color) 80%, transparent);
+          color: var(--text);
           overflow: hidden;
           animation: fn-modal-enter 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
         }
@@ -276,17 +275,17 @@ export default function AdBannerModal({
           top: 14px;
           right: 14px;
           z-index: 3;
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.08);
-          color: #94a3b8;
+          background: color-mix(in srgb, var(--surface-tint) 3%, transparent);
+          border: 1px solid color-mix(in srgb, var(--border) 8%, transparent);
+          color: var(--text-muted);
           cursor: pointer;
           border-radius: 6px;
           padding: 6px;
         }
         .fn-ad-header { display: flex; gap: 12px; align-items: flex-start; margin: 4px 32px 16px 0; }
-        .ad-icon { color: #3388ff; filter: drop-shadow(0 0 10px rgba(51,136,255,0.5)); }
+        .ad-icon { color: var(--accent-2); filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent-2) 50%, transparent)); }
         .fn-ad-header h3 { margin: 0 0 4px; font-size: 1.25rem; font-weight: 900; }
-        .fn-ad-header p { margin: 0; color: #94a3b8; font-size: 0.82rem; line-height: 1.4; }
+        .fn-ad-header p { margin: 0; color: var(--text-muted); font-size: 0.82rem; line-height: 1.4; }
         .ad-preview-screen {
           position: relative;
           min-height: 230px;
@@ -297,17 +296,17 @@ export default function AdBannerModal({
           margin-bottom: 16px;
           overflow: hidden;
           border-radius: 8px;
-          border: 1px solid rgba(0,230,184,0.28);
+          border: 1px solid color-mix(in srgb, var(--success) 28%, transparent);
           background:
-            radial-gradient(circle at 30% 20%, rgba(0,230,184,0.14), transparent 34%),
-            linear-gradient(135deg, rgba(51,136,255,0.12), rgba(255,68,204,0.08)),
-            #05070d;
-          box-shadow: inset 0 0 35px rgba(0,230,184,0.12), 0 0 18px rgba(51,136,255,0.18);
+            radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--success) 14%, transparent), transparent 34%),
+            linear-gradient(135deg, color-mix(in srgb, var(--accent-2) 12%, transparent), color-mix(in srgb, var(--danger) 8%, transparent)),
+            var(--surface);
+          box-shadow: inset 0 0 35px color-mix(in srgb, var(--success) 12%, transparent), 0 0 18px color-mix(in srgb, var(--accent-2) 18%, transparent);
         }
         .scanlines {
           position: absolute;
           inset: 0;
-          background: repeating-linear-gradient(180deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 4px);
+          background: repeating-linear-gradient(180deg, color-mix(in srgb, var(--surface-tint) 6%, transparent) 0 1px, transparent 1px 4px);
           mix-blend-mode: screen;
           opacity: 0.45;
           pointer-events: none;
@@ -321,14 +320,14 @@ export default function AdBannerModal({
           text-align: center;
           z-index: 1;
         }
-        .pulse-sparkle { color: #00e6b8; animation: spin-pulse 2s linear infinite; }
-        .ad-placeholder span, .ad-playing-container span { color: #94a3b8; font-size: 0.78rem; }
-        .ad-placeholder p { color: #00e6b8; margin: 0; font-weight: 900; }
-        .countdown-ring { transform: rotate(-90deg); filter: drop-shadow(0 0 12px rgba(0,230,184,0.35)); }
+        .pulse-sparkle { color: var(--success); animation: spin-pulse 2s linear infinite; }
+        .ad-placeholder span, .ad-playing-container span { color: var(--text-muted); font-size: 0.78rem; }
+        .ad-placeholder p { color: var(--success); margin: 0; font-weight: 900; }
+        .countdown-ring { transform: rotate(-90deg); filter: drop-shadow(0 0 12px color-mix(in srgb, var(--success) 35%, transparent)); }
         .ring-bg, .ring-progress { fill: none; stroke-width: 8; }
-        .ring-bg { stroke: rgba(255,255,255,0.08); }
+        .ring-bg { stroke: var(--text); }
         .ring-progress {
-          stroke: #00e6b8;
+          stroke: var(--success);
           stroke-linecap: round;
           stroke-dasharray: 314;
           transition: stroke-dashoffset 1s linear;
@@ -337,15 +336,15 @@ export default function AdBannerModal({
           position: absolute;
           top: 43px;
           font-size: 2rem;
-          color: #e2e8f0;
+          color: var(--text);
         }
-        .check-icon { color: #44ff88; }
+        .check-icon { color: var(--success); }
         .ad-completed h4 { margin: 0; font-size: 1.2rem; }
-        .ad-completed p { margin: 0; color: #44ff88; }
+        .ad-completed p { margin: 0; color: var(--success); }
         .watch-ad-btn {
           width: 100%;
-          background: #3388ff;
-          color: #fff;
+          background: var(--accent-fill);
+          color: var(--text);
           border: 0;
           padding: 12px;
           border-radius: 6px;
@@ -357,13 +356,13 @@ export default function AdBannerModal({
           gap: 8px;
         }
         .watch-ad-btn:disabled {
-          background: rgba(255,255,255,0.08);
-          color: #64748b;
+          background: color-mix(in srgb, var(--surface-tint) 8%, transparent);
+          color: var(--text-muted);
           cursor: not-allowed;
         }
-        .watch-ad-btn.done-btn { background: #00e6b8; color: #03110e; }
-        .ad-footer-note { margin-top: 12px; color: #64748b; text-align: center; font-size: 0.76rem; }
-        .fn-ad-notice { color: #fbbf24; text-align: center; line-height: 1.45; }
+        .watch-ad-btn.done-btn { background: var(--accent-fill); color: var(--on-accent); }
+        .ad-footer-note { margin-top: 12px; color: var(--text-muted); text-align: center; font-size: 0.76rem; }
+        .fn-ad-notice { color: var(--warning); text-align: center; line-height: 1.45; }
         .gem-rain { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
         .gem-rain span {
           position: absolute;

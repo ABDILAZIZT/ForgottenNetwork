@@ -4,6 +4,7 @@ import { useModal } from '../components/useModal';
 import { download } from '../download';
 import { floodFill, fitImage, transformPoint } from './raster';
 import { rgb, hex } from './color';
+import { useTheme } from '../components/useTheme';
 import ColorControls from './ColorControls';
 type Point = [number, number];
 type Layer = {
@@ -43,6 +44,7 @@ export default function RasterStudio({
   avatar?: boolean;
   placement?: { x: number; y: number; width: number; height: number };
 }) {
+  const theme = useTheme();
   const [position, setPosition] = useState(placement);
   const frame = placement
     ? fitImage(placement.width, placement.height, SIZE)
@@ -181,18 +183,19 @@ export default function RasterStudio({
   };
   useEffect(() => {
     const ctx = canvas.current?.getContext('2d');
-    if (!ctx) return;
+    if (!ctx || !theme) return;
+    const palette = getComputedStyle(document.documentElement);
     ctx.clearRect(0, 0, SIZE, SIZE);
     ctx.drawImage(composite(), 0, 0);
     if (frame.width !== SIZE || frame.height !== SIZE) {
-      ctx.fillStyle = '#11111199';
+      ctx.fillStyle = palette.getPropertyValue('--studio-mask').trim();
       ctx.fillRect(0, 0, SIZE, frame.y);
       ctx.fillRect(0, frame.y + frame.height, SIZE, SIZE);
       ctx.fillRect(0, frame.y, frame.x, frame.height);
       ctx.fillRect(frame.x + frame.width, frame.y, SIZE, frame.height);
     }
     if (grid) {
-      ctx.strokeStyle = '#88888850';
+      ctx.strokeStyle = palette.getPropertyValue('--canvas-grid').trim();
       ctx.lineWidth = 0.5;
       ctx.beginPath();
       for (let n = 0; n <= SIZE; n += 16) {
@@ -204,14 +207,14 @@ export default function RasterStudio({
       ctx.stroke();
     }
     if (selection.length && ['marquee', 'lasso', 'transform'].includes(tool)) {
-      ctx.strokeStyle = '#22aadd';
+      ctx.strokeStyle = palette.getPropertyValue('--accent-2').trim();
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
       polygon(ctx, tool === 'transform' ? selection.map(projected) : selection);
       ctx.stroke();
       ctx.setLineDash([]);
       if (tool === 'transform') {
-        ctx.fillStyle = '#22aadd';
+        ctx.fillStyle = palette.getPropertyValue('--accent-2').trim();
         for (const [x, y] of (
           [
             [bounds.x, bounds.y],
@@ -469,7 +472,8 @@ export default function RasterStudio({
               height={SIZE}
               onPointerDown={down}
               onPointerMove={move}
-              onPointerUp={() => {
+              onPointerUp={(event) => {
+                move(event);
                 gesture.current = null;
               }}
               onPointerCancel={() => {
@@ -500,42 +504,52 @@ export default function RasterStudio({
             <button onClick={() => setGrid((v) => !v)}>Toggle grid</button>
           </div>
           <aside>
-            <label>
-              Color
-              <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
-            </label>
-            <ColorControls value={color} onChange={setColor} />
-            <label>
-              Size {size}
-              <input
-                type="range"
-                min={1}
-                max={128}
-                value={size}
-                onChange={(e) => setSize(+e.target.value)}
-              />
-            </label>
-            <label>
-              Opacity
-              <input
-                type="range"
-                min={0.05}
-                max={1}
-                step={0.05}
-                value={opacity}
-                onChange={(e) => setOpacity(+e.target.value)}
-              />
-            </label>
-            <label>
-              Fill tolerance {tolerance}
-              <input
-                type="range"
-                min={0}
-                max={255}
-                value={tolerance}
-                onChange={(e) => setTolerance(+e.target.value)}
-              />
-            </label>
+            {['brush', 'bucket'].includes(tool) && (
+              <>
+                <label>
+                  Color
+                  <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
+                </label>
+                <ColorControls value={color} onChange={setColor} />
+              </>
+            )}
+            {['brush', 'eraser'].includes(tool) && (
+              <label>
+                Size {size}
+                <input
+                  type="range"
+                  min={1}
+                  max={128}
+                  value={size}
+                  onChange={(e) => setSize(+e.target.value)}
+                />
+              </label>
+            )}
+            {['brush', 'eraser', 'bucket'].includes(tool) && (
+              <label>
+                Opacity
+                <input
+                  type="range"
+                  min={0.05}
+                  max={1}
+                  step={0.05}
+                  value={opacity}
+                  onChange={(e) => setOpacity(+e.target.value)}
+                />
+              </label>
+            )}
+            {tool === 'bucket' && (
+              <label>
+                Fill tolerance {tolerance}
+                <input
+                  type="range"
+                  min={0}
+                  max={255}
+                  value={tolerance}
+                  onChange={(e) => setTolerance(+e.target.value)}
+                />
+              </label>
+            )}
             {position && (
               <>
                 <h3>World placement</h3>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { usePageVisible } from './usePageVisible';
 import {
   claimDailyChallenge,
   readDailyChallenges,
@@ -6,12 +7,15 @@ import {
 } from '../challenges';
 
 export default function DailyChallenges({ onReward }: { onReward: (gems: number) => void }) {
+  const visible = usePageVisible();
   const [snapshot, setSnapshot] = useState<DailyChallengeSnapshot>(readDailyChallenges);
   const [expanded, setExpanded] = useState(false);
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
+    if (!visible) return;
     const refresh = () => setSnapshot(readDailyChallenges());
+    refresh();
     window.addEventListener('fn-daily-challenge-change', refresh);
     window.addEventListener('storage', refresh);
     const timer = window.setInterval(refresh, 60_000);
@@ -20,7 +24,7 @@ export default function DailyChallenges({ onReward }: { onReward: (gems: number)
       window.removeEventListener('storage', refresh);
       window.clearInterval(timer);
     };
-  }, []);
+  }, [visible]);
 
   const readyCount = snapshot.challenges.filter(
     (challenge) =>

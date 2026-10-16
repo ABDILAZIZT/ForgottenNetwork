@@ -41,6 +41,7 @@ export class WorldEngine {
   private chunkEditRevisions = new Map<string, number>();
   private loadingChunkIds = new Set<string>();
   private running = false;
+  private animationFrame = 0;
   private lastTime = 0;
   private frameCount = 0;
   private smoothedFrameMs = 16.67;
@@ -102,18 +103,35 @@ export class WorldEngine {
     const { signal } = this.eventController;
     window.addEventListener('resize', () => this.resize(), { signal });
     window.addEventListener('beforeunload', () => this.saveAllChunks(), { signal });
+    document.addEventListener(
+      'visibilitychange',
+      () => {
+        cancelAnimationFrame(this.animationFrame);
+        this.animationFrame = 0;
+        if (this.running && !document.hidden) {
+          this.lastTime = performance.now();
+          this.animationFrame = requestAnimationFrame(this.loop);
+        }
+      },
+      { signal },
+    );
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
 
   start() {
+    if (this.running) return;
     this.running = true;
     this.lastTime = performance.now();
-    this.loadAllChunks().then(() => requestAnimationFrame(this.loop));
+    this.loadAllChunks().then(() => {
+      if (this.running && !document.hidden && !this.animationFrame)
+        this.animationFrame = requestAnimationFrame(this.loop);
+    });
   }
 
   stop() {
     this.running = false;
+    cancelAnimationFrame(this.animationFrame);
     this.eventController.abort();
     this.entityManager.dispose();
     if (!this.readOnly) {
@@ -281,7 +299,8 @@ export class WorldEngine {
   // ── Main loop ─────────────────────────────────────────────────────────────
 
   private loop = (now: number) => {
-    if (!this.running) return;
+    this.animationFrame = 0;
+    if (!this.running || document.hidden) return;
     const rawFrameMs = now - this.lastTime;
     const dt = Math.min(rawFrameMs / 1000, 0.05);
     this.lastTime = now;
@@ -304,7 +323,7 @@ export class WorldEngine {
     }
 
     this.render(this.reducedMotion ? 0 : now / 1000);
-    requestAnimationFrame(this.loop);
+    this.animationFrame = requestAnimationFrame(this.loop);
   };
 
   // ── Chunk management ──────────────────────────────────────────────────────
@@ -390,7 +409,10 @@ export class WorldEngine {
 
     // Clear every frame independently of optional atmospheric animation.
     // Otherwise transparent chunks and screen-blended glow accumulate when motion is reduced.
-    ctx.fillStyle = '#03060a';
+    ctx.fillStyle =
+      typeof document !== 'undefined' && document.documentElement.dataset.theme === 'light'
+        ? getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim()
+        : '#03060a';
     ctx.fillRect(0, 0, W, H);
 
     if (!this.reducedMotion) this.atmosphere.render(ctx, this.camera, W, H, t);

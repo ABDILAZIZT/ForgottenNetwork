@@ -5,3 +5,9 @@ try {
 } catch {
   document.documentElement.dataset.theme = 'dark';
 }
+
+const updateVisibility = () => {
+  document.documentElement.dataset.pageHidden = String(document.hidden);
+};
+updateVisibility();
+document.addEventListener('visibilitychange', updateVisibility);

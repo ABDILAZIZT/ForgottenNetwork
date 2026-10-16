@@ -1,7 +1,4 @@
 /* Shared, optional enhancements for both canvas modes. */
-:root {
-  --text-dim: #91a5b8;
-}
 button {
   transition:
     background-color 160ms,
@@ -9,31 +6,27 @@ button {
     box-shadow 160ms;
 }
 button:hover:not(:disabled) {
-  box-shadow: 0 0 18px #a78bfa18;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 9%, transparent);
 }
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 summary:focus-visible {
-  outline: 2px solid #67e8f9 !important;
+  outline: 2px solid var(--success) !important;
   outline-offset: 3px;
 }
 .fn-hidden {
   display: none;
 }
 .fn-expedition-launch {
-  position: fixed;
-  right: 25px;
-  top: 78px;
-  z-index: 34;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 9px 14px;
-  color: #e5dcff;
-  background: #171322ef !important;
-  border: 1px solid #a78bfa55 !important;
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface) 94%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 33%, transparent) !important;
   border-radius: 30px !important;
   cursor: pointer;
   font:
@@ -52,8 +45,7 @@ summary:focus-visible {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: #04050bd9;
-  backdrop-filter: blur(12px);
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
 }
 .fn-expedition-modal {
   width: min(1040px, 100%);
@@ -61,11 +53,11 @@ summary:focus-visible {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid #a78bfa50;
+  border: 1px solid color-mix(in srgb, var(--accent) 31%, transparent);
   border-radius: 18px;
-  background: linear-gradient(145deg, #181326, #0b101a);
-  color: #eeeaf8;
-  box-shadow: 0 30px 100px #000a;
+  background: linear-gradient(145deg, var(--surface), var(--surface));
+  color: var(--text);
+  box-shadow: 0 30px 100px color-mix(in srgb, var(--shadow-color) 67%, transparent);
   font:
     14px/1.6 'Inter',
     sans-serif;
@@ -76,7 +68,7 @@ summary:focus-visible {
   justify-content: space-between;
   align-items: center;
   padding: 22px 28px;
-  border-bottom: 1px solid #ffffff14;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 8%, transparent);
 }
 .fn-expedition-modal h2 {
   font:
@@ -90,21 +82,20 @@ summary:focus-visible {
     10px/1.5 'Fira Code',
     monospace;
   letter-spacing: 0.13em;
-  color: #b5a6d3;
+  color: var(--text-muted);
   text-transform: uppercase;
 }
 .fn-expedition-modal nav {
   display: flex;
   gap: 8px;
   padding: 12px 28px;
-  border-bottom: 1px solid #ffffff14;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 8%, transparent);
 }
 .fn-expedition-modal button,
-.fn-market button,
-.fn-tutorial button {
-  background: #29213d;
-  color: #eee7ff;
-  border: 1px solid #a78bfa35;
+.fn-market button {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--accent) 21%, transparent);
   padding: 10px 14px;
   border-radius: 8px;
   cursor: pointer;
@@ -113,8 +104,8 @@ summary:focus-visible {
 }
 .fn-expedition-modal button[aria-pressed='true'],
 .fn-market button[aria-pressed='true'] {
-  background: #b9a1fa;
-  color: #160e27;
+  background: var(--accent-fill);
+  color: var(--on-accent);
 }
 .fn-expedition-modal button:disabled,
 .fn-market button:disabled {
@@ -128,23 +119,27 @@ summary:focus-visible {
   overscroll-behavior: contain;
 }
 .fn-expedition-scroll p {
-  color: #b2acc5;
+  color: var(--text-muted);
   margin: 10px 0;
 }
 .fn-journey-hero,
 .fn-market-feature {
   position: relative;
   padding: 32px;
-  border: 1px solid #a78bfa40;
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
   border-radius: 14px;
   background:
-    radial-gradient(ellipse at 90% 15%, #6549af55, transparent 60%),
-    linear-gradient(130deg, #1a2038, #171020);
+    radial-gradient(
+      ellipse at 90% 15%,
+      color-mix(in srgb, var(--accent) 33%, transparent),
+      transparent 60%
+    ),
+    linear-gradient(130deg, var(--surface), var(--surface));
   overflow: hidden;
 }
 .fn-journey-hero > span,
 .fn-market-feature > span {
-  color: #83e5e3;
+  color: var(--success);
   font:
     10px 'Fira Code',
     monospace;
@@ -171,14 +166,14 @@ summary:focus-visible {
 }
 .fn-achievements span {
   padding: 10px 14px;
-  border: 1px solid #ffffff20;
+  border: 1px solid color-mix(in srgb, var(--border) 13%, transparent);
   border-radius: 8px;
-  color: #aaa2ba;
+  color: var(--text-muted);
 }
 .fn-achievements .earned {
-  color: #fcd887;
-  background: #5b431c30;
-  border-color: #fbbf2460;
+  color: var(--accent-2);
+  background: color-mix(in srgb, var(--surface-tint) 19%, transparent);
+  border-color: color-mix(in srgb, var(--warning) 38%, transparent);
 }
 .fn-activity {
   display: grid;
@@ -190,10 +185,10 @@ summary:focus-visible {
   justify-content: space-between;
   text-align: left;
   gap: 16px;
-  background: #ffffff04;
+  background: color-mix(in srgb, var(--surface-tint) 2%, transparent);
 }
 .fn-activity small {
-  color: #b4a4ce;
+  color: var(--text-muted);
 }
 .fn-preferences label {
   display: flex;
@@ -203,14 +198,14 @@ summary:focus-visible {
 }
 .fn-preferences select,
 .fn-studio select {
-  background: #1d1730 !important;
-  color: #eee7ff;
+  background: var(--surface) !important;
+  color: var(--text);
   padding: 9px;
-  border: 1px solid #a78bfa60;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
   border-radius: 6px;
 }
 .fn-preferences input {
-  accent-color: #a78bfa;
+  accent-color: var(--accent-fill);
 }
 .fn-market {
   position: relative;
@@ -223,11 +218,11 @@ summary:focus-visible {
 }
 .fn-market-feature em {
   font-style: normal;
-  color: #c4b5fd;
+  color: var(--text);
 }
 .fn-market-feature small {
   display: block;
-  color: #b2a4c7;
+  color: var(--text-muted);
   margin-top: 12px;
 }
 .fn-market-balance {
@@ -238,7 +233,7 @@ summary:focus-visible {
   margin-top: 20px;
 }
 .fn-market-balance strong {
-  color: #74e7d4;
+  color: var(--success);
 }
 .fn-market-grid {
   display: grid;
@@ -246,31 +241,35 @@ summary:focus-visible {
   gap: 16px;
 }
 .fn-market-card {
-  --rarity: #e2e8f0;
+  --rarity: var(--text);
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 22px;
   border: 1px solid color-mix(in srgb, var(--rarity) 35%, transparent);
   border-radius: 12px;
-  background: linear-gradient(145deg, #ffffff06, #ffffff02);
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--surface-tint) 2%, transparent),
+    color-mix(in srgb, var(--surface-tint) 1%, transparent)
+  );
   transition:
     transform 180ms,
     box-shadow 180ms;
 }
 .fn-market-card.rare {
-  --rarity: #60a5fa;
+  --rarity: var(--accent-2);
 }
 .fn-market-card.epic {
-  --rarity: #c084fc;
+  --rarity: var(--accent);
 }
 .fn-market-card.legendary {
-  --rarity: #fbbf24;
+  --rarity: var(--warning);
 }
 .fn-market-card:hover {
   transform: translateY(-3px);
   box-shadow:
-    0 12px 30px #0005,
+    0 12px 30px color-mix(in srgb, var(--shadow-color) 33%, transparent),
     0 0 20px color-mix(in srgb, var(--rarity) 10%, transparent);
 }
 .fn-market-card .fn-rarity {
@@ -283,20 +282,20 @@ summary:focus-visible {
 }
 .fn-market-card p {
   min-height: 65px;
-  color: #b9b0cb;
+  color: var(--text-muted);
 }
 .fn-market-card strong {
-  color: #ede5fa;
+  color: var(--text);
 }
 .fn-market-card strong small {
   font-weight: 400;
   font-size: 11px;
-  color: #aaa0bb;
+  color: var(--text-muted);
 }
 .fn-market-card button:first-of-type {
   margin-top: auto;
-  background: #a78bfa;
-  color: #171023;
+  background: var(--accent-fill);
+  color: var(--on-accent);
   font-weight: 600;
 }
 .fn-market-card button:last-of-type {
@@ -309,33 +308,42 @@ summary:focus-visible {
   place-items: center;
   font-size: 64px;
   color: var(--rarity);
-  background: radial-gradient(ellipse, #a78bfa15, transparent 65%);
+  background: radial-gradient(
+    ellipse,
+    color-mix(in srgb, var(--accent) 8%, transparent),
+    transparent 65%
+  );
   text-shadow: 0 0 30px var(--rarity);
 }
 .fn-item-art.rainbow_brush {
-  background: linear-gradient(120deg, #fb71851a, #22d3ee22, #a78bfa30);
+  background: linear-gradient(
+    120deg,
+    color-mix(in srgb, var(--warning) 10%, transparent),
+    color-mix(in srgb, var(--success) 13%, transparent),
+    color-mix(in srgb, var(--accent) 19%, transparent)
+  );
 }
 .fn-purchase-confirm {
   position: sticky;
   top: 0;
   z-index: 4;
   padding: 20px;
-  background: #262037;
-  border: 1px solid #a78bfa;
+  background: var(--surface);
+  border: 1px solid var(--accent);
   border-radius: 12px;
-  box-shadow: 0 10px 35px #0008;
+  box-shadow: 0 10px 35px color-mix(in srgb, var(--shadow-color) 53%, transparent);
 }
 .fn-purchase-confirm button {
   margin: 8px 8px 0 0;
 }
 .fn-market-notice {
   min-height: 24px;
-  color: #7cead4 !important;
+  color: var(--success) !important;
 }
 .fn-market-confetti {
   position: fixed;
   inset: 20% 10% auto;
-  color: #fcd887;
+  color: var(--accent-2);
   text-align: center;
   font-size: 48px;
   pointer-events: none;
@@ -347,16 +355,16 @@ summary:focus-visible {
   grid-template-columns: minmax(0, 1fr) 256px;
   gap: 24px;
   padding: 20px;
-  border: 1px solid #22d3ee55;
+  border: 1px solid color-mix(in srgb, var(--success) 33%, transparent);
   border-radius: 12px;
   margin: 20px 0;
-  background: #0d1020;
+  background: var(--surface);
 }
 .fn-studio canvas {
   width: 256px;
   max-width: 100%;
   aspect-ratio: 1;
-  border: 1px solid #a78bfa66;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
   border-radius: 4px;
   touch-action: none;
 }
@@ -383,11 +391,11 @@ summary:focus-visible {
 .fn-ad-slot {
   margin: 24px auto 0;
   max-width: 100%;
-  color: #a9a6bb;
-  border: 1px solid #a78bfa25;
+  color: var(--text-muted);
+  border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
   border-radius: 8px;
   padding: 10px;
-  background: #0b0c15;
+  background: var(--surface);
   text-align: center;
 }
 .fn-ad-slot > small {
@@ -404,7 +412,7 @@ summary:focus-visible {
   min-height: 50px;
 }
 .fn-ad-slot strong {
-  color: #c4b5fd;
+  color: var(--text);
   font:
     500 15px 'Space Grotesk',
     sans-serif;
@@ -437,34 +445,38 @@ summary:focus-visible {
   overflow: hidden;
 }
 .fn-weather.night {
-  background: #20113a12;
+  background: color-mix(in srgb, var(--surface-tint) 7%, transparent);
 }
 .fn-weather.day {
-  background: #ffe8b206;
+  background: color-mix(in srgb, var(--accent-2) 2%, transparent);
 }
 .fn-weather.crt {
-  background-image: repeating-linear-gradient(0deg, transparent 0 3px, #00000016 3px 4px);
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent 0 3px,
+    color-mix(in srgb, var(--surface-tint) 9%, transparent) 3px 4px
+  );
 }
 .fn-weather i {
   position: absolute;
   top: -10px;
   width: 3px;
   height: 3px;
-  background: #c4b5fd;
+  background: var(--accent-fill);
   opacity: 0.4;
   animation: fn-weather-fall 10s linear infinite;
 }
 .fn-weather.rain i {
   width: 1px;
   height: 36px;
-  background: linear-gradient(transparent, #22d3ee);
+  background: linear-gradient(transparent, var(--accent-fill));
 }
 .fn-weather.snow i {
-  background: #e0f2fe;
+  background: var(--surface);
 }
 .fn-weather.particles i {
   animation-direction: reverse;
-  box-shadow: 0 0 12px #c4b5fd;
+  box-shadow: 0 0 12px var(--accent-2);
 }
 .fn-pointer-aura {
   position: fixed;
@@ -472,9 +484,9 @@ summary:focus-visible {
   top: -13px;
   width: 26px;
   height: 26px;
-  border: 1px solid #22d3ee88;
+  border: 1px solid color-mix(in srgb, var(--success) 53%, transparent);
   border-radius: 50%;
-  box-shadow: 0 0 18px #a78bfa77;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 47%, transparent);
   pointer-events: none;
   z-index: 40;
 }
@@ -486,49 +498,29 @@ summary:focus-visible {
 }
 .fn-pointer-trail i {
   position: absolute;
-  color: #e4c6ff;
+  color: var(--text);
   font-size: 14px;
   animation: fn-spark 750ms ease-out both;
 }
-body[data-cosmetics~='night_vision'] .pw-canvas,
-body[data-cosmetics~='night_vision'] #world-root > canvas {
-  filter: brightness(1.35);
-}
+
 body[data-cosmetics~='avatar_frame'] .pw-profile-button {
   animation: fn-frame 4s linear infinite;
 }
 body[data-cosmetics~='minimap_skin'] .pw-minimap,
 body[data-cosmetics~='minimap_skin'] .fn-minimap {
-  border: 2px solid #22d3ee;
-  box-shadow: 0 0 20px #fbbf2422;
+  border: 2px solid var(--success);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--warning) 13%, transparent);
 }
-.fn-tutorial,
-.fn-expedition-notice,
 .fn-offline {
-  position: fixed;
-  z-index: 90;
-  left: 50%;
-  transform: translateX(-50%);
   max-width: calc(100vw - 32px);
   padding: 14px 20px;
-  border: 1px solid #a78bfa70;
+  border: 1px solid color-mix(in srgb, var(--accent) 44%, transparent);
   border-radius: 10px;
-  background: #171322f5;
-  color: #e9e3f8;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  color: var(--text);
   font:
     13px/1.6 'Inter',
     sans-serif;
-}
-.fn-tutorial {
-  bottom: 150px;
-  width: 340px;
-}
-.fn-expedition-notice {
-  bottom: 125px;
-  cursor: pointer;
-}
-.fn-offline {
-  top: 85px;
 }
 .fn-typewriter {
   display: inline-block;
@@ -536,7 +528,7 @@ body[data-cosmetics~='minimap_skin'] .fn-minimap {
   overflow: hidden;
   white-space: nowrap;
   animation: fn-typewriter 2.8s steps(34, end) both;
-  color: #c4b5fd;
+  color: var(--text);
   font:
     12px 'Fira Code',
     monospace;
@@ -547,14 +539,18 @@ body[data-cosmetics~='minimap_skin'] .fn-minimap {
   inset: 0;
   overflow: hidden;
   pointer-events: none;
-  background: radial-gradient(ellipse at 60% 30%, #a78bfa15, transparent 60%);
+  background: radial-gradient(
+    ellipse at 60% 30%,
+    color-mix(in srgb, var(--accent) 8%, transparent),
+    transparent 60%
+  );
 }
 .fn-cinematic i {
   position: absolute;
   width: 3px;
   height: 3px;
-  background: #c4b5fd;
-  box-shadow: 0 0 15px #22d3ee;
+  background: var(--accent-fill);
+  box-shadow: 0 0 15px var(--success);
   animation: fn-weather-fall 20s linear infinite reverse;
 }
 .fn-onboarding-welcome .welcome-copy {
@@ -567,11 +563,11 @@ body[data-cosmetics~='minimap_skin'] .fn-minimap {
 .pw-world .pw-muted,
 .pw-world .pw-forever-copy,
 .pw-world .pw-world-heading p {
-  color: #aaa1bc;
+  color: var(--text-muted);
 }
 .pw-busy {
   background-size: 200% 100%;
-  background-image: linear-gradient(90deg, #211d30, #39304b, #211d30);
+  background-image: linear-gradient(90deg, var(--surface), var(--surface), var(--surface));
   animation: fn-skeleton 1.8s linear infinite;
 }
 @keyframes fn-enhance-enter {
@@ -607,27 +603,19 @@ body[data-cosmetics~='minimap_skin'] .fn-minimap {
     transform: translateY(180px) rotate(8deg);
   }
 }
-@keyframes fn-spark {
-  to {
-    opacity: 0;
-    transform: translate(12px, 22px) scale(0.2);
-  }
-}
 @keyframes fn-frame {
   50% {
-    box-shadow: 0 0 20px #a78bfa66;
-    border-color: #22d3ee;
+    opacity: 0.75;
+    transform: translateY(-1px);
   }
 }
 @keyframes fn-skeleton {
-  to {
-    background-position: -200% 0;
+  50% {
+    opacity: 0.8;
   }
 }
 @media (max-width: 720px) {
   .fn-expedition-launch {
-    top: 65px;
-    right: 12px;
     padding: 6px 10px;
   }
   .fn-expedition-launch span {
@@ -668,10 +656,6 @@ body[data-cosmetics~='minimap_skin'] .fn-minimap {
   .fn-typewriter {
     font-size: 10px;
   }
-  .fn-offline {
-    top: 110px;
-    width: calc(100% - 32px);
-  }
 }
 @media (pointer: coarse) {
   .pw-world button,
@@ -689,4 +673,154 @@ body[data-cosmetics~='minimap_skin'] .fn-minimap {
 }
 [data-reduced-motion='true'] .fn-weather i {
   display: none;
+}
+
+/* Effects sit below controls. Only active moving layers get compositor hints. */
+.fn-weather {
+  z-index: 1;
+  contain: strict;
+}
+.fn-weather.night {
+  background: var(--weather-night);
+}
+.fn-weather.day {
+  background: var(--weather-day);
+}
+.fn-weather.crt {
+  background-image: repeating-linear-gradient(0deg, transparent 0 3px, var(--weather-crt) 3px 4px);
+}
+.fn-weather.still i {
+  animation-play-state: paused;
+}
+.fn-pointer-aura {
+  will-change: transform;
+}
+.fn-pointer-trail i {
+  left: 0;
+  top: 0;
+  transform: translate(var(--trail-x), var(--trail-y));
+}
+@keyframes fn-spark {
+  to {
+    opacity: 0;
+    transform: translate(calc(var(--trail-x) + 12px), calc(var(--trail-y) + 22px)) scale(0.2);
+  }
+}
+html[data-page-hidden='true'] *,
+html[data-page-hidden='true'] *::before,
+html[data-page-hidden='true'] *::after {
+  animation-play-state: paused !important;
+}
+.fn-share-notice {
+  position: fixed;
+  z-index: 20000;
+  inset: 12px 12px auto;
+  margin: 0 auto;
+  width: fit-content;
+  max-width: calc(100vw - 24px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border-hi);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+.fn-share-notice input {
+  flex: 1 1 240px;
+  min-width: 0;
+  width: 100%;
+  user-select: text;
+}
+.fn-share-notice button {
+  padding: 6px;
+  color: var(--accent);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.fn-offline {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  background: var(--surface);
+}
+.fn-expedition-modal button[aria-pressed='true'],
+.fn-market button[aria-pressed='true'],
+.fn-market-card button:first-of-type {
+  background: var(--accent-fill);
+  color: var(--on-accent);
+}
+.fn-ad-modal,
+.fn-reward-modal {
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto !important;
+}
+.fn-shop-modal {
+  max-height: calc(100dvh - 32px) !important;
+}
+.fn-expedition-modal,
+.rs-dialog,
+.fn-shop-modal,
+.fn-ad-modal,
+.fn-reward-modal {
+  color: var(--text);
+}
+.fn-shop-header,
+.fn-shop-tabs,
+.fn-shop-footer,
+.fn-balance-bar {
+  flex-shrink: 0;
+}
+.fn-expedition-modal header,
+.fn-expedition-modal nav {
+  flex-shrink: 0;
+}
+.fn-shop-title {
+  min-width: 0;
+  padding-right: 32px;
+}
+.fn-shop-content {
+  min-height: 0;
+}
+.fn-market-notice,
+.fn-community-status {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--surface);
+}
+.fn-shop-modal :is(.buy-btn, .buy-btn-sm),
+.fn-reward-modal .claim-btn,
+.fn-ad-modal .watch-ad-btn {
+  background: var(--accent-fill);
+  color: var(--on-accent);
+}
+.fn-expedition-backdrop,
+.rs-backdrop,
+.fn-shop-overlay,
+.fn-ad-overlay,
+.fn-reward-overlay {
+  z-index: 1000;
+  pointer-events: auto;
+}
+@media (max-width: 600px), (max-height: 600px) {
+  .fn-shop-modal {
+    overflow-y: auto !important;
+    display: block !important;
+  }
+  .fn-shop-content {
+    overflow: visible !important;
+  }
+  .fn-shop-content .feature-table {
+    min-width: 0;
+    table-layout: fixed;
+    overflow-wrap: anywhere;
+  }
+  .fn-shop-content .feature-table :is(th, td) {
+    padding: 6px 3px;
+  }
 }

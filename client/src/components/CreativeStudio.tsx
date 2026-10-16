@@ -78,7 +78,13 @@ export default function CreativeStudio({ owned }: { owned: string[] }) {
         </p>
         <label>
           Tool{' '}
-          <select value={tool} onChange={(e) => setTool(e.target.value)}>
+          <select
+            value={tool}
+            onChange={(e) => {
+              setTool(e.target.value);
+              setStamp(0);
+            }}
+          >
             <option value="pen">Basic pen</option>
             {['rainbow_brush', 'glow_pen', 'pixel_stamps', 'creature_stamps', 'gradient_fill']
               .filter((id) => owned.includes(id))
@@ -212,7 +218,7 @@ export default function CreativeStudio({ owned }: { owned: string[] }) {
                     '01110/10001/10101/10001/01110',
                   ];
             ctx.fillStyle = color;
-            patterns[stamp].split('/').forEach((row, y) =>
+            patterns[stamp % patterns.length].split('/').forEach((row, y) =>
               [...row].forEach((cell, x) => {
                 if (cell === '1') ctx.fillRect(p[0] + (x - 2) * 5, p[1] + (y - 2) * 5, 5, 5);
               }),
@@ -226,7 +232,8 @@ export default function CreativeStudio({ owned }: { owned: string[] }) {
         onPointerMove={(e) => {
           if (drawing.current) paint(point(e));
         }}
-        onPointerUp={() => {
+        onPointerUp={(e) => {
+          if (drawing.current) paint(point(e));
           drawing.current = false;
           last.current = null;
         }}

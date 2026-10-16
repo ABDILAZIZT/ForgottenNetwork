@@ -11,6 +11,12 @@ export default function SavedMediaPreview({ value }: { value: EntityState }) {
     let cancelled = false,
       frame = 0;
     const urls: string[] = [];
+    let resume: (() => void) | undefined;
+    const visibility = () => {
+      cancelAnimationFrame(frame);
+      if (!document.hidden) resume?.();
+    };
+    document.addEventListener('visibilitychange', visibility);
     const resolve = async (url?: string) => {
       if (!url?.startsWith('asset:')) return url;
       const asset = await repository.loadAsset(url.slice(6));
@@ -39,17 +45,25 @@ export default function SavedMediaPreview({ value }: { value: EntityState }) {
       );
       let previous = performance.now();
       const draw = (now: number) => {
-        if (cancelled || !canvas.current) return;
+        if (cancelled || document.hidden || !canvas.current) return;
         const ctx = canvas.current.getContext('2d')!;
         ctx.clearRect(0, 0, 200, 200);
-        entity.update(Math.min(0.05, (now - previous) / 1000), now / 1000, () => null);
+        const reduced =
+          document.documentElement.dataset.reducedMotion === 'true' ||
+          matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (!reduced)
+          entity.update(Math.min(0.05, (now - previous) / 1000), now / 1000, () => null);
         previous = now;
         camera.x = entity.wx;
         camera.y = entity.wy - (entity.anchor === 'feet' ? (entity.height * entity.scale) / 2 : 0);
-        entity.draw(ctx, camera, 200, 200, now / 1000);
+        entity.draw(ctx, camera, 200, 200, reduced ? 0 : now / 1000);
         frame = requestAnimationFrame(draw);
       };
-      frame = requestAnimationFrame(draw);
+      resume = () => {
+        previous = performance.now();
+        frame = requestAnimationFrame(draw);
+      };
+      if (!document.hidden) resume();
     })()
       .catch((e) => {
         if (!cancelled) setError((e as Error).message);
@@ -59,6 +73,7 @@ export default function SavedMediaPreview({ value }: { value: EntityState }) {
       });
     return () => {
       cancelled = true;
+      document.removeEventListener('visibilitychange', visibility);
       cancelAnimationFrame(frame);
       urls.forEach((u) => URL.revokeObjectURL(u));
     };
@@ -70,7 +85,7 @@ export default function SavedMediaPreview({ value }: { value: EntityState }) {
         width={200}
         height={200}
         aria-label={'Preview of ' + (value.name || value.type)}
-        style={{ background: '#242433', maxWidth: '100%', imageRendering: 'pixelated' }}
+        style={{ background: 'var(--surface-hi)', maxWidth: '100%', imageRendering: 'pixelated' }}
       />
       {error && <p role="status">{error}</p>}
     </>

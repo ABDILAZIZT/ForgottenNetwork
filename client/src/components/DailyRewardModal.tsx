@@ -101,9 +101,7 @@ export default function DailyRewardModal({
 
         <div className="milestones">
           <span>Day 3: Streak Bonus</span>
-          <span>Day 7: Neon Noir</span>
-          <span>Day 14: Deep Cache</span>
-          <span>Day 30: Network Legend</span>
+          <span>Day 7: Weekly bonus</span>
         </div>
 
         <div className="fn-reward-card">
@@ -135,8 +133,7 @@ export default function DailyRewardModal({
         .fn-reward-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(5,5,12,0.85);
-          backdrop-filter: blur(8px);
+          background: color-mix(in srgb, var(--surface) 85%, transparent);
           z-index: 1000;
           display: flex;
           align-items: center;
@@ -147,9 +144,9 @@ export default function DailyRewardModal({
         }
         .fn-reward-modal {
           position: relative;
-          background: #0d0e17;
-          border: 1px solid rgba(255,170,0,0.3);
-          box-shadow: 0 0 35px rgba(255,170,0,0.15), 0 20px 50px rgba(0,0,0,0.8);
+          background: var(--surface);
+          border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+          box-shadow: 0 0 35px color-mix(in srgb, var(--warning) 15%, transparent), 0 20px 50px color-mix(in srgb, var(--shadow-color) 80%, transparent);
           border-radius: 8px;
           width: min(560px, 100%);
           padding: 30px 24px 24px;
@@ -158,7 +155,7 @@ export default function DailyRewardModal({
           align-items: center;
           text-align: center;
           overflow: hidden;
-          color: #e2e8f0;
+          color: var(--text);
           animation: fn-modal-enter 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         .pixel-particles {
@@ -166,8 +163,8 @@ export default function DailyRewardModal({
           inset: 0;
           pointer-events: none;
           background-image:
-            radial-gradient(circle, rgba(0,230,184,0.22) 0 2px, transparent 3px),
-            radial-gradient(circle, rgba(255,68,204,0.18) 0 1px, transparent 2px);
+            radial-gradient(circle, color-mix(in srgb, var(--success) 22%, transparent) 0 2px, transparent 3px),
+            radial-gradient(circle, color-mix(in srgb, var(--danger) 18%, transparent) 0 1px, transparent 2px);
           background-size: 44px 44px, 70px 70px;
           animation: particles-drift 14s linear infinite;
         }
@@ -175,9 +172,9 @@ export default function DailyRewardModal({
           position: absolute;
           top: 14px;
           right: 14px;
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.08);
-          color: #94a3b8;
+          background: color-mix(in srgb, var(--surface-tint) 3%, transparent);
+          border: 1px solid color-mix(in srgb, var(--border) 8%, transparent);
+          color: var(--text-muted);
           cursor: pointer;
           border-radius: 6px;
           padding: 6px;
@@ -185,16 +182,16 @@ export default function DailyRewardModal({
         }
         .fn-reward-icon-wrapper { position: relative; margin-bottom: 12px; z-index: 1; }
         .reward-gift-icon {
-          color: #ffaa00;
-          filter: drop-shadow(0 0 12px rgba(255,170,0,0.5));
+          color: var(--warning);
+          filter: drop-shadow(0 0 12px color-mix(in srgb, var(--warning) 50%, transparent));
           animation: float-gift 3s ease-in-out infinite;
         }
         .fn-reward-icon-wrapper.opening .reward-gift-icon { animation: gift-open 900ms ease both; }
-        .sparkle-1, .sparkle-2 { position: absolute; color: #00e6b8; }
+        .sparkle-1, .sparkle-2 { position: absolute; color: var(--success); }
         .sparkle-1 { top: -6px; right: -14px; }
-        .sparkle-2 { bottom: -4px; left: -16px; color: #ff44cc; }
+        .sparkle-2 { bottom: -4px; left: -16px; color: var(--danger); }
         .fn-reward-modal h3 { margin: 0 0 6px; font-size: 1.35rem; font-weight: 900; position: relative; }
-        .fn-reward-modal p { margin: 0 0 18px; color: #94a3b8; font-size: 0.86rem; position: relative; }
+        .fn-reward-modal p { margin: 0 0 18px; color: var(--text-muted); font-size: 0.86rem; position: relative; }
         .streak-calendar {
           position: relative;
           display: grid;
@@ -207,39 +204,39 @@ export default function DailyRewardModal({
           min-height: 74px;
           padding: 8px 5px;
           border-radius: 12px;
-          border: 1px solid rgba(255,255,255,0.08);
-          background: rgba(255,255,255,0.03);
-          color: #64748b;
+          border: 1px solid color-mix(in srgb, var(--border) 8%, transparent);
+          background: color-mix(in srgb, var(--surface-tint) 3%, transparent);
+          color: var(--text-muted);
           display: flex;
           flex-direction: column;
           justify-content: center;
           gap: 3px;
           clip-path: polygon(10% 0, 90% 0, 100% 20%, 100% 80%, 90% 100%, 10% 100%, 0 80%, 0 20%);
         }
-        .streak-cell strong { color: #e2e8f0; font-size: 0.78rem; }
-        .streak-cell span { color: #00e6b8; font-weight: 900; }
-        .streak-cell small { color: #ffaa00; font-size: 0.58rem; line-height: 1.1; }
+        .streak-cell strong { color: var(--text); font-size: 0.78rem; }
+        .streak-cell span { color: var(--success); font-weight: 900; }
+        .streak-cell small { color: var(--warning); font-size: 0.58rem; line-height: 1.1; }
         .streak-cell.claimed {
-          background: rgba(255,170,0,0.14);
-          border-color: rgba(255,170,0,0.45);
-          box-shadow: 0 0 14px rgba(255,170,0,0.22);
+          background: color-mix(in srgb, var(--warning) 14%, transparent);
+          border-color: color-mix(in srgb, var(--warning) 45%, transparent);
+          box-shadow: 0 0 14px color-mix(in srgb, var(--warning) 22%, transparent);
         }
         .streak-cell.today {
-          border-color: rgba(0,230,184,0.8);
+          border-color: color-mix(in srgb, var(--success) 80%, transparent);
           animation: today-pulse 1.5s ease-in-out infinite;
         }
         .milestones {
           position: relative;
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(2, 1fr);
           gap: 6px;
           width: 100%;
           margin-bottom: 16px;
         }
         .milestones span {
-          border: 1px solid rgba(255,170,0,0.3);
-          color: #ffaa00;
-          background: rgba(255,170,0,0.08);
+          border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+          color: var(--warning);
+          background: color-mix(in srgb, var(--warning) 8%, transparent);
           border-radius: 6px;
           padding: 6px;
           font-size: 0.66rem;
@@ -251,17 +248,17 @@ export default function DailyRewardModal({
           padding: 18px;
           margin-bottom: 18px;
           border-radius: 8px;
-          border: 1px dashed rgba(255,170,0,0.4);
-          background: rgba(255,170,0,0.08);
+          border: 1px dashed color-mix(in srgb, var(--warning) 40%, transparent);
+          background: color-mix(in srgb, var(--warning) 8%, transparent);
         }
-        .reward-coins-icon { color: #ffaa00; }
-        .reward-amount { font-size: 1.55rem; font-weight: 900; color: #00e6b8; }
-        .reward-subtitle { color: #94a3b8; font-size: 0.78rem; }
+        .reward-coins-icon { color: var(--warning); }
+        .reward-amount { font-size: 1.55rem; font-weight: 900; color: var(--success); }
+        .reward-subtitle { color: var(--text-muted); font-size: 0.78rem; }
         .claim-btn {
           position: relative;
           width: 100%;
-          background: linear-gradient(90deg, #ffaa00, #00e6b8);
-          color: #06110e;
+          background: linear-gradient(90deg, var(--accent-fill), var(--accent-fill));
+          color: var(--on-accent);
           border: 0;
           padding: 14px;
           border-radius: 6px;
@@ -272,9 +269,9 @@ export default function DailyRewardModal({
         .claimed-status {
           position: relative;
           width: 100%;
-          color: #44ff88;
-          background: rgba(68,255,136,0.12);
-          border: 1px solid rgba(68,255,136,0.3);
+          color: var(--success);
+          background: color-mix(in srgb, var(--success) 12%, transparent);
+          border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
           border-radius: 6px;
           padding: 12px;
           display: flex;
@@ -293,13 +290,10 @@ export default function DailyRewardModal({
           45% { transform: scale(1.12) rotate(-8deg); }
           100% { transform: scale(1.02) rotate(6deg); }
         }
-        @keyframes today-pulse {
-          0%, 100% { box-shadow: 0 0 0 rgba(0,230,184,0); }
-          50% { box-shadow: 0 0 16px rgba(0,230,184,0.5); }
-        }
+        @keyframes today-pulse { 50% { opacity: .75; } }
         @keyframes particles-drift {
           from { background-position: 0 0, 0 0; }
-          to { background-position: 90px 120px, -80px 70px; }
+          to { transform: translate(20px, 24px); }
         }
         @media (max-width: 620px) {
           .streak-calendar { grid-template-columns: repeat(4, 1fr); }

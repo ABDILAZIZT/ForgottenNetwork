@@ -3,6 +3,7 @@ import { Map, MapPin, Shield, Share2, X } from 'lucide-react';
 import type { WorldEngine } from '../engine/Engine';
 import { readBeacons, readClaims, type SubscriptionTier } from '../economy';
 import { locationUrl } from '../location';
+import { useShareLink } from './ShareNotice';
 
 interface Props {
   engine: Pick<WorldEngine, 'getCamera' | 'setClaims' | 'setHeatmap'> | null;
@@ -19,6 +20,7 @@ export default function WorldExtras({
   revision,
   onToast,
 }: Props) {
+  const { share, notice } = useShareLink();
   const [open, setOpen] = useState(false);
   const [heatmap, setHeatmap] = useState(false);
   const [beacons, setBeacons] = useState(readBeacons);
@@ -66,6 +68,7 @@ export default function WorldExtras({
 
   return (
     <aside className="fn-extras fn-panel" aria-label="World unlocks">
+      {notice}
       <button
         className="fn-btn"
         title={open ? 'Close world unlocks' : 'World unlocks'}
@@ -121,14 +124,17 @@ export default function WorldExtras({
               <button
                 title={`Share ${beacon.name}`}
                 onClick={() => {
-                  void navigator.clipboard
-                    .writeText(
-                      locationUrl(location.origin, location.pathname, beacon.x, beacon.y, 1.5),
-                    )
-                    .then(
-                      () => onToast('Beacon link copied'),
-                      () => onToast('Could not copy beacon link'),
-                    );
+                  void share(
+                    locationUrl(
+                      location.origin,
+                      location.pathname + location.search,
+                      beacon.x,
+                      beacon.y,
+                      1.5,
+                      undefined,
+                      null,
+                    ),
+                  );
                 }}
               >
                 <Share2 size={16} />

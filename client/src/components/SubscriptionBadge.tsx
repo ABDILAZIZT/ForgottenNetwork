@@ -24,19 +24,19 @@ export default function SubscriptionBadge({ tier }: Props) {
           white-space: nowrap;
         }
         .fn-subscription-badge.artist {
-          color: #00120f;
-          background: linear-gradient(135deg, #00e6b8, #88ffee);
-          box-shadow: 0 0 12px rgba(0, 230, 184, 0.35);
+          color: var(--on-accent);
+          background: linear-gradient(135deg, var(--accent-fill), var(--accent-fill));
+          box-shadow: 0 0 12px color-mix(in srgb, var(--success) 35%, transparent);
         }
         .fn-subscription-badge.vip {
-          color: #100900;
-          background: linear-gradient(135deg, #ffaa00, #fff0a8, #ff44cc);
-          box-shadow: 0 0 18px rgba(255, 170, 0, 0.45);
+          color: var(--on-accent);
+          background: linear-gradient(135deg, var(--accent-fill), var(--accent-fill), var(--accent-fill));
+          box-shadow: 0 0 18px color-mix(in srgb, var(--warning) 45%, transparent);
           animation: fn-vip-badge-pulse 1.8s ease-in-out infinite;
         }
         @keyframes fn-vip-badge-pulse {
-          0%, 100% { filter: brightness(1); transform: translateY(0); }
-          50% { filter: brightness(1.18); transform: translateY(-1px); }
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-1px); }
         }
       `}</style>
     </span>
