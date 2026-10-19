@@ -1602,7 +1602,7 @@
 }
 .pw-left-column {
   display: grid;
-  grid-template-columns: auto minmax(0, 280px);
+  grid-template-columns: auto;
   gap: var(--dock-gap);
   align-items: start;
   max-height: 100%;
@@ -1611,6 +1611,25 @@
   pointer-events: auto;
   scrollbar-width: thin;
   overscroll-behavior: contain;
+}
+.pw-left-column:has(.pw-tool-options) {
+  grid-template-columns: auto minmax(0, 280px);
+}
+.pw-draft-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  padding: 6px;
+  font-size: 12px;
+}
+.pw-stamp-preview {
+  display: block;
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  margin: 12px auto;
+  image-rendering: pixelated;
 }
 .pw-right-column {
   display: flex;

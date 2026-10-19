@@ -3,6 +3,8 @@ import { GifDecoder, type GifFrame } from '../engine/GifDecoder';
 import { drawBrush } from './brushes';
 
 const images = new Map<string, HTMLImageElement>();
+let artRevision = 0;
+export const getArtRevision = () => artRevision;
 const frames = new Map<string, GifFrame[]>();
 const loading = new Map<string, Promise<void>>();
 const tiles = new Map<string, HTMLCanvasElement>();
@@ -12,6 +14,7 @@ let mediaToken: string | undefined;
 let mediaEpoch = 0;
 
 export function resetArtMedia() {
+  artRevision++;
   mediaEpoch++;
   for (const source of sources.values())
     void source.then(URL.revokeObjectURL).catch(() => undefined);
@@ -87,6 +90,7 @@ export async function loadArt(e: Placement) {
   loading.set(id, promise);
   try {
     await promise;
+    if (epoch === mediaEpoch) artRevision++;
   } catch (error) {
     if (epoch === mediaEpoch) {
       loading.delete(id);
@@ -370,5 +374,6 @@ export function drawArt(ctx: CanvasRenderingContext2D, e: Artwork | Placement, t
   ctx.restore();
 }
 export function clearArtCache() {
+  artRevision++;
   tiles.clear();
 }

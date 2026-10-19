@@ -11,6 +11,7 @@ import { usePageVisible } from './usePageVisible';
 import { locationUrl } from '../location';
 import { useShareLink } from './ShareNotice';
 import { translate, useLocale } from '../locale';
+import WeatherCanvas from './WeatherCanvas';
 
 export default function Expedition({
   x,
@@ -150,18 +151,7 @@ export default function Expedition({
           aria-hidden="true"
           className={`fn-weather ${!motion ? 'still' : ''} ${weather} ${scanlines ? 'crt' : ''} ${cycle ? (night ? 'night' : 'day') : ''}`}
         >
-          {motion &&
-            weather !== 'off' &&
-            Array.from({ length: 28 }, (_, i) => (
-              <i
-                key={i}
-                style={{
-                  left: ((i * 37) % 100) + '%',
-                  animationDelay: -(i % 9) + 's',
-                  animationDuration: (weather === 'rain' ? 2 : 8) + (i % 4) + 's',
-                }}
-              />
-            ))}
+          {motion && weather !== 'off' && <WeatherCanvas weather={weather} />}
         </div>
       )}
       {effects && motion && (

@@ -1,4 +1,5 @@
 import { Camera } from '../engine/Camera';
+import { ArtworkViewportCache } from './ArtworkViewportCache';
 import { clearArtCache, drawArt, loadArt } from './art';
 import { availablePlacementCells, placementCells } from './geometry';
 import type { LandClaim } from '../economy';
@@ -86,6 +87,9 @@ export class PermanentEngine {
   }
   private ctx: CanvasRenderingContext2D;
   private frame = 0;
+  private lastPaint = -Infinity;
+  private sceneRevision = 0;
+  private artworkCache = new ArtworkViewportCache();
   private observer: ResizeObserver;
   private events = new AbortController();
   private width = 1;
@@ -240,6 +244,7 @@ export class PermanentEngine {
     this.camera.zoomAt(factor, this.width / 2, this.height / 2, this.width, this.height);
   }
   add(elements: Artwork[], animate = false) {
+    this.sceneRevision = (this.sceneRevision || 0) + 1;
     for (const e of elements) {
       if (this.removed.has(e.id)) continue;
       const fresh = !this.elements.has(e.id);
@@ -268,6 +273,7 @@ export class PermanentEngine {
     }
   }
   remove(ids: string[]) {
+    this.sceneRevision = (this.sceneRevision || 0) + 1;
     this.mutationEpoch++;
     ids.forEach((id) => {
       this.removed.add(id);
@@ -665,7 +671,22 @@ export class PermanentEngine {
   private render = (time: number) => {
     this.frame = 0;
     if (document.hidden) return;
+    const previousX = this.camera.x,
+      previousY = this.camera.y,
+      previousZoom = this.camera.zoom;
     this.camera.update();
+    const moving =
+      Math.abs(previousX - this.camera.x) +
+        Math.abs(previousY - this.camera.y) +
+        Math.abs(previousZoom - this.camera.zoom) >
+      0.001;
+    const interval =
+      moving || this.start || this.panning || this.pointers.size ? 1000 / 60 : 1000 / 30;
+    if (time - this.lastPaint < interval - 1) {
+      this.frame = requestAnimationFrame(this.render);
+      return;
+    }
+    this.lastPaint = time;
     const ctx = this.ctx,
       w = this.width,
       h = this.height,
@@ -719,16 +740,16 @@ export class PermanentEngine {
       ctx.strokeRect(c.x, c.y, c.width, c.height);
       ctx.setLineDash([]);
     }
-    const visible = [...this.elements.values()]
-      .filter(
-        (e) =>
-          e.x + e.width >= v.x &&
-          e.x <= v.x + v.width &&
-          e.y + e.height >= v.y &&
-          e.y <= v.y + v.height,
-      )
-      .sort((a, b) => a.zIndex - b.zIndex);
-    for (const e of visible) drawArt(ctx, e, t);
+    const visible = this.artworkCache.draw(
+      ctx,
+      this.elements,
+      v,
+      w,
+      h,
+      this.dpr,
+      t,
+      this.sceneRevision,
+    );
     if (this.densityMap) {
       ctx.fillStyle = '#22aadd30';
       for (const e of visible) ctx.fillRect(e.x, e.y, e.width, e.height);

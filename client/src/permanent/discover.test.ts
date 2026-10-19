@@ -26,3 +26,22 @@ it('stays inside world bounds near the edges', () => {
   expect(Math.abs(next.x)).toBeLessThanOrEqual(1000000);
   expect(Math.abs(next.y)).toBeLessThanOrEqual(1000000);
 });
+it('does not alternate back to the origin or recent places, even with the same random value', () => {
+  const recent: Array<{ x: number; y: number }> = [];
+  let current = view;
+  for (let i = 0; i < 20; i++) {
+    const target = discoverLocation(
+      current,
+      [
+        { x: 0, y: 0, cells: 100 },
+        { x: 30, y: 5, cells: 50 },
+      ],
+      () => 0,
+      recent,
+    );
+    expect(Math.hypot(target.x, target.y)).toBeGreaterThan(1024);
+    expect(recent.some((p) => Math.hypot(target.x - p.x, target.y - p.y) <= 1024)).toBe(false);
+    recent.push(target);
+    current = { ...view, x: target.x - view.width / 2, y: target.y - view.height / 2 };
+  }
+});

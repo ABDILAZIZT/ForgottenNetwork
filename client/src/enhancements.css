@@ -443,6 +443,13 @@ summary:focus-visible {
   z-index: 8;
   pointer-events: none;
   overflow: hidden;
+  contain: strict;
+}
+.fn-weather-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 .fn-weather.night {
   background: color-mix(in srgb, var(--surface-tint) 7%, transparent);

@@ -251,6 +251,8 @@ export default function PermanentWorld() {
   const [recovery, setRecovery] = useState(''),
     [unread, setUnread] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null),
+    avatarInput = useRef<HTMLInputElement>(null),
+    discoveryHistory = useRef<Array<{ x: number; y: number }>>([]),
     toastTimer = useRef<ReturnType<typeof setTimeout>>(),
     soundContext = useRef<AudioContext | null>(null),
     ambient = useRef<GainNode | null>(null);
@@ -1000,15 +1002,10 @@ export default function PermanentWorld() {
     }
     if (tool === 'stamp') {
       setOptions(true);
-      if (!session?.user.avatarId) {
-        toastMessage('Add an avatar in your profile first.');
-        setPanel('profile');
-        return;
-      }
       setSettings((s) => ({
         ...s,
         tool,
-        assetId: session.user.avatarId,
+        assetId: session?.user.avatarId,
         mediaRatio: 1,
         animated: false,
       }));
@@ -1161,6 +1158,8 @@ export default function PermanentWorld() {
       const next = { ...session, user };
       setSession(next);
       localStorage.setItem('fn_canvas_identity', JSON.stringify(next));
+      if (settings.tool === 'stamp')
+        setSettings((s) => ({ ...s, assetId: asset.id, mediaRatio: 1, animated: false }));
     } else {
       const old = editor.original;
       const dimension = old ? Math.max(old.width, old.height) : 256;
@@ -1286,6 +1285,28 @@ export default function PermanentWorld() {
               {translate('header.publish', locale)} {drafts > 0 ? `(${drafts})` : ''}
             </button>
           )}
+          <label
+            className="pw-draft-mode"
+            title="Keep new artwork unpublished until you press Publish"
+          >
+            <input
+              type="checkbox"
+              aria-label="Draft before publishing"
+              checked={settings.draftMode}
+              disabled={!session}
+              onChange={(e) => {
+                if (!session) return;
+                try {
+                  saveDraftMode(session.user.id, e.target.checked);
+                  setSettings((s) => ({ ...s, draftMode: e.target.checked }));
+                } catch {
+                  setSettings((s) => ({ ...s, draftMode: true }));
+                  toastMessage('Could not save your preference. Draft mode remains on.');
+                }
+              }}
+            />
+            {locale === 'ar' ? 'مسودات' : 'Draft mode'}
+          </label>
           <button
             aria-label={translate('header.theme', locale)}
             title={translate('header.theme', locale)}
@@ -1447,7 +1468,21 @@ export default function PermanentWorld() {
                 </>
               ) : settings.tool === 'stamp' ? (
                 <>
-                  {' '}
+                  <p className="pw-muted">
+                    {session?.user.avatarId
+                      ? 'Avatar stamp ready. Move onto the canvas to preview, then click to place.'
+                      : 'Add an avatar to start stamping it onto the canvas.'}
+                  </p>
+                  {session?.user.avatarId && (
+                    <img
+                      className="pw-stamp-preview"
+                      src={assetUrl(session.user.avatarId)}
+                      alt="Avatar stamp preview"
+                    />
+                  )}
+                  <button className="pw-wide-button" onClick={() => avatarInput.current?.click()}>
+                    {session?.user.avatarId ? 'Change stamp avatar' : 'Add stamp avatar'}
+                  </button>{' '}
                   <label>
                     Width <b>{settings.mediaWidth}px</b>
                     <input
@@ -1722,23 +1757,6 @@ export default function PermanentWorld() {
               )}
               {settings.tool !== 'stamp' && (
                 <>
-                  <label className="pw-check">
-                    <input
-                      type="checkbox"
-                      checked={settings.draftMode}
-                      onChange={(e) => {
-                        if (!session) return;
-                        try {
-                          saveDraftMode(session.user.id, e.target.checked);
-                          setSettings((s) => ({ ...s, draftMode: e.target.checked }));
-                        } catch {
-                          setSettings((s) => ({ ...s, draftMode: true }));
-                          toastMessage('Could not save your preference. Draft mode remains on.');
-                        }
-                      }}
-                    />
-                    Draft before publishing
-                  </label>
                   {drafts > 0 && (
                     <div className="pw-draft-actions">
                       <button title="Undo draft" onClick={() => engine.current?.undoDraft()}>
@@ -1764,10 +1782,19 @@ export default function PermanentWorld() {
             hidden={welcome}
             reducedMotion={reducedMotion}
             onDiscover={() => {
+              const currentView = engine.current?.getView() || view;
+              if (!discoveryHistory.current.length)
+                discoveryHistory.current.push({
+                  x: currentView.x + currentView.width / 2,
+                  y: currentView.y + currentView.height / 2,
+                });
               const target = discoverLocation(
-                engine.current?.getView() || view,
+                currentView,
                 stats?.density || [],
+                Math.random,
+                discoveryHistory.current,
               );
+              discoveryHistory.current = [...discoveryHistory.current, target].slice(-12);
               engine.current?.fly(target.x, target.y, view.zoom || 0.9);
             }}
             onVisit={(x, y) => engine.current?.fly(x, y, 1.5)}
@@ -2566,6 +2593,17 @@ export default function PermanentWorld() {
           {toast}
         </div>
       )}
+      <input
+        ref={avatarInput}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) setEditor({ source: URL.createObjectURL(file), avatar: true });
+          e.target.value = '';
+        }}
+      />
       <input
         ref={fileInput}
         type="file"
